@@ -3,17 +3,18 @@
 <body><main class="settings">
   <a class="wordmark" href="demo.html"><span class="mk">u−</span>UnShop</a>
   <h1>Settings</h1>
-  <p class="lede">UnShop learns what you want from what you reject on Amazon search pages. Claude interprets your feedback through a small server you run; without it, simple local rules still work.</p>
+  <p class="lede">UnShop learns what you want from what you reject on Amazon search pages. An AI model (Claude by default, or OpenAI, Gemini, or a local Ollama model) interprets your feedback through a small server you run; without it, simple local rules still work.</p>
 
   <section>
-    <div class="row"><h2>Claude interpretation</h2><span id="health" class="tag">Checking…</span></div>
-    <label class="switch"><input type="checkbox" id="aiEnabled"> <span>Send feedback and visible product titles/prices to my UnShop server for Claude to interpret</span></label>
+    <div class="row"><h2>AI interpretation</h2><span id="health" class="tag">Checking…</span></div>
+    <label class="switch"><input type="checkbox" id="aiEnabled"> <span>Send feedback and visible product titles/prices to my UnShop server for the AI to interpret</span></label>
     <label for="serverUrl" class="field">Server URL</label>
     <div class="inline"><input id="serverUrl" type="url" spellcheck="false" placeholder="http://localhost:8787"><button id="save" class="button">Save &amp; test</button></div>
     <p class="muted">Start the server from the project folder:</p>
     <pre>npm install
-ANTHROPIC_API_KEY=sk-ant-… npm run server</pre>
-    <p class="muted">Your API key stays in the server process — it is never stored in the extension. What gets sent: your typed requests, rejection reasons and notes, and the titles and prices of products visible on the page. No account data, reviews, or browsing history.</p>
+cp .env.example .env   # choose a provider, add its key
+npm run server</pre>
+    <p class="muted">The provider is chosen with <code>LLM_PROVIDER</code> in <code>.env</code> (anthropic, openai, gemini, or ollama). Your API key stays in the server process — it is never stored in the extension. What gets sent: your typed requests, rejection reasons and notes, and the titles and prices of products visible on the page. No account data, reviews, or browsing history.</p>
   </section>
 
   <section>

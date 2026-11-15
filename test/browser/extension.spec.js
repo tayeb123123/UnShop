@@ -20,7 +20,7 @@ async function fixture(page, { html = card(), ai = 'offline', pageScript = '', u
     window.chrome = { runtime: {
       sendMessage(message, callback) {
         setTimeout(() => {
-          if (message.type === 'unshop:health') return callback(mode === 'online' ? { ok: true, keyConfigured: true, model: 'claude-opus-5-5' } : { ok: false, error: 'UnShop AI server is not running.' });
+          if (message.type === 'unshop:health') return callback(mode === 'online' ? { ok: true, keyConfigured: true, model: 'claude-opus-5-5', label: 'Claude' } : { ok: false, error: 'UnShop AI server is not running.' });
           if (message.type === 'unshop:analyze') {
             window.__aiCalls.push(message.payload);
             return callback({ ok: true, result: { preferences: { budget: 80, compact: true, mustHave: ['foldable'], avoid: ['over-ear'], notes: '' }, searchQuery: 'compact foldable headphones', summary: 'Got it — you want something light you can fold.', products: message.payload.products.map(p => ({ id: p.id, fit: /compact/i.test(p.title) ? 92 : 20, reason: /compact/i.test(p.title) ? 'Small and light' : 'Bulky over-ear' })) } });

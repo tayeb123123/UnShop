@@ -19,7 +19,7 @@ async function call(path, init = {}, timeoutMs = 60000) {
     if (!res.ok) throw new Error(body.error || `Server responded ${res.status}.`);
     return body;
   } catch (error) {
-    if (error.name === 'AbortError') throw new Error('Claude took too long to respond.');
+    if (error.name === 'AbortError') throw new Error('The AI took too long to respond.');
     if (error instanceof TypeError) throw new Error('UnShop AI server is not running. Start it with “npm run server”.');
     throw error;
   } finally { clearTimeout(timer); }

@@ -143,7 +143,7 @@ globalThis.UnShopModel = (() => {
     return { state: b.state, understood: [...new Set([...a.understood, ...b.understood])] };
   }
   function refinePreferences(state, text, query = '') { return parseFeedback(state, text, { polarity: 1, query }).state; }
-  // Merge a validated Claude response into state.
+  // Merge a validated AI response into state.
   function applyAnalysis(state, result) {
     const next = normalizeState(state);
     const p = result?.preferences || {};

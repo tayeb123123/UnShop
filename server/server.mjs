@@ -2,7 +2,8 @@
 import http from 'node:http';
 import Anthropic from '@anthropic-ai/sdk';
 import { ZodError } from 'zod';
-import { analyze, MODEL } from './analyze.mjs';
+import { analyze } from './analyze.mjs';
+import { providerConfig } from './providers.mjs';
 
 const PORT = Number(process.env.PORT || 8787);
 const HOST = process.env.HOST || '127.0.0.1';
@@ -31,14 +32,14 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'OPTIONS') return send(res, 204, {}, origin);
   const url = new URL(req.url, `http://${req.headers.host}`);
   if (req.method === 'GET' && url.pathname === '/api/health') {
-    return send(res, 200, { ok: true, model: MODEL, keyConfigured: Boolean(process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_AUTH_TOKEN) }, origin);
+    const cfg = providerConfig();
+    return send(res, 200, { ok: true, provider: cfg.id, label: cfg.label, model: cfg.model, keyConfigured: cfg.ready, problem: cfg.problem || undefined }, origin);
   }
   if (req.method === 'POST' && url.pathname === '/api/analyze') {
     const started = Date.now();
-    if (!process.env.ANTHROPIC_API_KEY && !process.env.ANTHROPIC_AUTH_TOKEN) return send(res, 401, { error: 'The UnShop server has no ANTHROPIC_API_KEY. Restart it with the key set.' }, origin);
     try {
       const result = await analyze(await readBody(req));
-      console.log(`analyze ok · ${result.products.length} products · ${Date.now() - started}ms`);
+      console.log(`analyze ok · ${result.label} ${result.model} · ${result.products.length} products · ${Date.now() - started}ms`);
       return send(res, 200, result, origin);
     } catch (error) {
       let status = error.status || 500, message = error.message;
@@ -55,6 +56,7 @@ const server = http.createServer(async (req, res) => {
 });
 
 server.listen(PORT, HOST, () => {
-  console.log(`UnShop AI server on http://${HOST === '127.0.0.1' ? 'localhost' : HOST}:${PORT} · model ${MODEL}`);
-  if (!process.env.ANTHROPIC_API_KEY && !process.env.ANTHROPIC_AUTH_TOKEN) console.warn('Warning: ANTHROPIC_API_KEY is not set; /api/analyze will fail until it is.');
+  const cfg = providerConfig();
+  console.log(`UnShop AI server on http://${HOST === '127.0.0.1' ? 'localhost' : HOST}:${PORT} · ${cfg.label}${cfg.model ? ` · ${cfg.model}` : ''}`);
+  if (!cfg.ready) console.warn(`Warning: ${cfg.problem}`);
 });

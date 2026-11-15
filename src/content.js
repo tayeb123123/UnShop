@@ -12,6 +12,7 @@
   const uiToCard = new WeakMap();
   const diagnostics = globalThis.__unshop = { scans: 0, mutations: 0, cards: 0, aiCalls: 0 };
   let state = M.emptyState(), timer, observer, undo = null, chain = Promise.resolve();
+  let aiLabel = 'AI';  // provider name reported by the server: Claude, OpenAI, Gemini, Ollama…
   let ai = 'checking', thinking = false, aiSeq = 0, autoScored = false, collapsed = false, hidePoor = false;
   const POOR_FIT = 30, AI_LIMIT = 20;
 
@@ -328,14 +329,14 @@ fieldset{border:0;padding:0;margin:0}legend{font-size:12px;font-weight:650;color
   }
   let lastAiError = '';
   function renderAi() {
-    const pill = $('.pill'), label = thinking ? 'Thinking…' : { online: 'Claude', offline: 'Local rules', off: 'Local rules', checking: 'Checking AI…' }[ai];
+    const pill = $('.pill'), label = thinking ? 'Thinking…' : { online: aiLabel, offline: 'Local rules', off: 'Local rules', checking: 'Checking AI…' }[ai];
     pill.dataset.s = thinking ? 'thinking' : ai; pill.querySelector('.pl').textContent = label;
-    pill.title = ai === 'online' ? 'Preferences are interpreted by Claude via your UnShop server.' : 'Claude is unavailable; using built-in keyword rules.';
+    pill.title = ai === 'online' ? `Preferences are interpreted by ${aiLabel} via your UnShop server.` : 'The AI server is unavailable; using built-in rules.';
     const go = $('#learn');
     go.disabled = thinking; go.innerHTML = thinking ? '<span class="spin"></span>Thinking' : 'Refine';
-    $('.mode-hint').textContent = ai === 'online' ? 'Claude reads your words · Enter to apply' : 'Local rules · Enter to apply';
+    $('.mode-hint').textContent = ai === 'online' ? `${aiLabel} reads your words · Enter to apply` : 'Local rules · Enter to apply';
     const bubble = $('.bubble');
-    if (thinking) { bubble.classList.remove('err'); bubble.classList.add('wait'); bubble.textContent = 'Claude is reading your feedback and re-scoring this page…'; }
+    if (thinking) { bubble.classList.remove('err'); bubble.classList.add('wait'); bubble.textContent = `${aiLabel} is reading your feedback and re-scoring this page…`; }
     else bubble.classList.remove('wait');
   }
   function query() { return new URL(location.href).searchParams.get('k') || (demo ? 'wireless headphones' : ''); }
@@ -359,10 +360,10 @@ fieldset{border:0;padding:0;margin:0}legend{font-size:12px;font-weight:650;color
     $('.suggestions').append(b);
   }
 
-  /* ---------- Claude ---------- */
+  /* ---------- AI (via the UnShop server) ---------- */
   function visibleProducts() {
     // Skip what's already ruled out locally (rejected, over budget) and cap the count:
-    // Claude writes a score + reason per product, so fewer products means a faster reply.
+    // The model writes a score + reason per product, so fewer products means a faster reply.
     return [...cards.values()].map(e => e.product)
       .filter(p => !state.rejected[p.id] && !(state.budget && Number.isFinite(p.price) && p.price > state.budget))
       .slice(0, AI_LIMIT).map(({ id, title, price }) => ({ id, title, price }));
@@ -378,7 +379,7 @@ fieldset{border:0;padding:0;margin:0}legend{font-size:12px;font-weight:650;color
     if (seq !== aiSeq) return false;
     thinking = false;
     if (!response?.ok) {
-      lastAiError = response?.error || 'Claude is unavailable.';
+      lastAiError = response?.error || `${aiLabel} is unavailable.`;
       if (!response?.disabled) ai = 'offline';
       render(); status(lastAiError, 'err'); return false;
     }
@@ -400,7 +401,7 @@ fieldset{border:0;padding:0;margin:0}legend{font-size:12px;font-weight:650;color
     dialog.setAttribute('aria-labelledby', 'dlg-title');
     dialog.innerHTML = `<form method="dialog"><div class="dh"><span class="thumb"></span><div><h2 id="dlg-title">Not for you? What’s off?</h2><p class="title"></p></div><button type="button" class="icon close" aria-label="Close">×</button></div>
       <fieldset><legend>Pick the closest reason</legend><div class="reasons"></div></fieldset>
-      <label class="note-label" for="note">Say more <span style="font-weight:400;color:var(--mute)">(optional — this is what Claude learns most from)</span></label>
+      <label class="note-label" for="note">Say more <span style="font-weight:400;color:var(--mute)">(optional — this is what the AI learns most from)</span></label>
       <textarea id="note" class="note" maxlength="500" placeholder="e.g. too heavy for my commute, I want something I can fold"></textarea>
       <p class="error" role="alert"></p>
       <div class="actions"><button type="button" class="ghost cancel">Cancel</button><button type="submit" class="go save">Hide &amp; learn</button></div></form>`;
@@ -447,7 +448,7 @@ fieldset{border:0;padding:0;margin:0}legend{font-size:12px;font-weight:650;color
     if (!more && !less) { status('Add something to More or Less first.', 'err'); $('#more').focus(); return; }
     if (ai === 'online') {
       const ok = await runAi({ more, less });
-      if (ok) { clearBoxes(); status('Updated with Claude.'); return; }
+      if (ok) { clearBoxes(); status(`Updated with ${aiLabel}.`); return; }
     }
     const { state: next, understood } = M.refineMoreLess(state, more, less, query());
     if (!understood.length) { status('I couldn’t pick out a feature there. Try short words like “smaller”, “metal”, “under $60”.', 'err'); return; }
@@ -510,7 +511,8 @@ fieldset{border:0;padding:0;margin:0}legend{font-size:12px;font-weight:650;color
     scan();
     ask({ type: 'unshop:health' }).then(h => {
       ai = h?.ok ? 'online' : h?.disabled ? 'off' : 'offline';
-      if (h?.ok && !h.keyConfigured) { ai = 'offline'; lastAiError = 'The AI server is running but has no ANTHROPIC_API_KEY.'; }
+      if (h?.ok && h.label) aiLabel = String(h.label).slice(0, 24);
+      if (h?.ok && !h.keyConfigured) { ai = 'offline'; lastAiError = h.problem || 'The AI server is running but is not configured.'; }
       render(); maybeAutoScore();
     });
   });

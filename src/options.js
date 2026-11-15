@@ -5,8 +5,8 @@ function health() {
   const tag = $('#health'); tag.textContent = 'Checking…'; tag.dataset.s = '';
   chrome.runtime.sendMessage({ type: 'unshop:health' }, h => {
     if (chrome.runtime.lastError || !h) { tag.textContent = 'Unavailable'; tag.dataset.s = 'bad'; return; }
-    if (h.ok && h.keyConfigured) { tag.textContent = `Connected · ${h.model}`; tag.dataset.s = 'ok'; }
-    else if (h.ok) { tag.textContent = 'Server up · no API key'; tag.dataset.s = 'warn'; }
+    if (h.ok && h.keyConfigured) { tag.textContent = `Connected · ${h.label || 'AI'} · ${h.model}`; tag.dataset.s = 'ok'; }
+    else if (h.ok) { tag.textContent = 'Server needs setup'; tag.title = h.problem || ''; tag.dataset.s = 'warn'; }
     else if (h.disabled) { tag.textContent = 'Off · local rules'; tag.dataset.s = ''; }
     else { tag.textContent = 'Server not running'; tag.dataset.s = 'bad'; tag.title = h.error || ''; }
   });
