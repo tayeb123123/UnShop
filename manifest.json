@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "UnShop — find it by ruling things out",
-  "version": "0.4.0",
+  "version": "0.6.0",
   "description": "An unofficial shopping overlay for Amazon, eBay, Walmart, Target and Best Buy search pages that learns what you want from what you reject.",
   "permissions": [
     "storage"

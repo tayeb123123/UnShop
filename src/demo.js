@@ -25,11 +25,13 @@ function art(kind, bg, fg) {
 for (const [id, title, price, kind, bg, fg, stars, count] of samples) {
   const card = document.createElement('article');
   card.className = 'product'; card.dataset.componentType = 's-search-result'; card.dataset.asin = id;
+  const media = document.createElement('div'); media.className = 'media';
   const image = document.createElement('img'); image.className = 's-image'; image.alt = ''; image.src = art(kind, bg, fg);
+  media.append(image);
   const heading = document.createElement('h2'); heading.textContent = title;
   const rating = document.createElement('div'); rating.className = 'rating'; rating.textContent = `★ ${stars} (${count.toLocaleString()}) · fictional`;
   const cost = document.createElement('div'); cost.className = 'a-price price';
   const value = document.createElement('span'); value.className = 'a-offscreen'; value.textContent = price === null ? 'Price unavailable' : `$${price}.00`;
   const shown = document.createElement('span'); shown.setAttribute('aria-hidden', 'true'); shown.textContent = price === null ? 'See options' : `$${price}`;
-  cost.append(value, shown); card.append(image, heading, rating, cost); document.querySelector('#products').append(card);
+  cost.append(value, shown); card.append(media, heading, rating, cost); document.querySelector('#products').append(card);
 }

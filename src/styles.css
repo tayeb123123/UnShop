@@ -1,25 +1,48 @@
-/* Page-level product controls only; the panel lives in a Shadow DOM. Scoped and !important to survive Amazon's CSS. */
+/* Page-level product controls only; the panel lives in a Shadow DOM.
+   Scoped to UnShop's own classes and !important so store CSS can't restyle them. */
 .unshop-card{position:relative!important}
-.unshop-ui[data-unshop-owned]{position:absolute!important;top:8px!important;left:8px!important;right:8px!important;z-index:20!important;display:flex!important;align-items:flex-start!important;justify-content:space-between!important;gap:6px!important;pointer-events:none!important;margin:0!important;padding:0!important;font:600 12px/1.2 ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif!important;letter-spacing:0!important;text-transform:none!important}
-.unshop-ui .unshop-badge{pointer-events:auto!important;display:inline-flex!important;align-items:center!important;padding:5px 9px!important;border-radius:99px!important;background:#ffffffee!important;color:#46594d!important;border:1px solid #e4e9e3!important;box-shadow:0 2px 8px rgba(19,36,27,.12)!important;max-width:60%!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;font-size:11.5px!important}
+.unshop-media-rel{position:relative!important}
+
+.unshop-ui[data-unshop-owned]{display:flex!important;align-items:center!important;gap:6px!important;margin:0!important;padding:0!important;box-sizing:border-box!important;font:500 12px/1.2 -apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",system-ui,sans-serif!important;letter-spacing:-.01em!important;text-transform:none!important;color:#1d1d1f!important}
+/* Small frosted pills, like iOS photo overlays */
+.unshop-ui .unshop-badge,.unshop-ui .unshop-reject{appearance:none!important;display:inline-flex!important;align-items:center!important;gap:5px!important;height:26px!important;min-height:0!important;width:auto!important;padding:0 11px!important;margin:0!important;border:.5px solid rgba(0,0,0,.08)!important;border-radius:99px!important;background:rgba(255,255,255,.9)!important;-webkit-backdrop-filter:saturate(180%) blur(12px)!important;backdrop-filter:saturate(180%) blur(12px)!important;box-shadow:0 1px 3px rgba(0,0,0,.12)!important;color:#1d1d1f!important;font:500 12px/1 -apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",system-ui,sans-serif!important;white-space:nowrap!important;text-shadow:none!important}
+.unshop-ui .unshop-badge{min-width:0!important;max-width:100%!important;overflow:hidden!important;text-overflow:ellipsis!important;color:#6e6e73!important}
 .unshop-ui .unshop-badge[hidden]{display:none!important}
-.unshop-ui .unshop-badge[data-tone=good]{background:#e9fbc4!important;color:#2c4a12!important;border-color:#c9f16b!important}
-.unshop-ui .unshop-badge[data-tone=conflict]{background:#fff4dc!important;color:#7a4d00!important;border-color:#f3d48a!important}
-.unshop-ui .unshop-badge[data-tone=rejected]{background:#13241b!important;color:#fff!important;border-color:#13241b!important}
-.unshop-ui .unshop-reject{pointer-events:auto!important;appearance:none!important;margin:0 0 0 auto!important;border:1px solid #d6ddd6!important;border-radius:99px!important;background:#fffffff2!important;color:#13241b!important;padding:6px 11px!important;font:650 12px/1.2 ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif!important;cursor:pointer!important;white-space:nowrap!important;box-shadow:0 2px 8px rgba(19,36,27,.14)!important;transition:background .12s,color .12s,transform .12s!important;min-height:0!important;height:auto!important;width:auto!important}
-.unshop-ui .unshop-reject:hover{background:#13241b!important;color:#fff!important;border-color:#13241b!important}
+/* Tone = a small solid dot, nothing louder */
+.unshop-ui .unshop-badge::before{content:""!important;flex:none!important;width:6px!important;height:6px!important;border-radius:50%!important;background:#86868b!important}
+.unshop-ui .unshop-badge[data-tone=good]{color:#1d1d1f!important}.unshop-ui .unshop-badge[data-tone=good]::before{background:#34c759!important}
+.unshop-ui .unshop-badge[data-tone=conflict]{color:#1d1d1f!important}.unshop-ui .unshop-badge[data-tone=conflict]::before{background:#ff9f0a!important}
+.unshop-ui .unshop-reject{flex:none!important;margin-left:auto!important;cursor:pointer!important;transition:background .15s ease,transform .1s ease!important}
+.unshop-ui .unshop-reject:hover{background:#fff!important}
 .unshop-ui .unshop-reject:active{transform:scale(.96)!important}
-.unshop-ui .unshop-reject:focus-visible{outline:2px solid #2f7d4f!important;outline-offset:2px!important}
-.unshop-ui .unshop-reject[data-state=rejected]{background:#c9f16b!important;border-color:#a9d64a!important}
-.unshop-ui .unshop-reject[data-state=rejected]:hover{background:#b6e44f!important;color:#13241b!important}
-/* Rejected: collapse the card to a one-line strip with a Restore button. */
+.unshop-ui .unshop-reject:focus-visible{outline:none!important;box-shadow:0 0 0 3px rgba(0,113,227,.4)!important}
+
+/* On the product image, bottom edge: never over title/description text */
+.unshop-ui[data-mode=media]{position:absolute!important;left:8px!important;right:8px!important;bottom:8px!important;top:auto!important;z-index:5!important;flex-wrap:wrap-reverse!important;justify-content:space-between!important;pointer-events:none!important;animation:unshop-in .3s ease both!important}
+.unshop-ui[data-mode=media]>*{pointer-events:auto!important}
+
+/* No usable image: a small row above the card content, in the normal flow */
+.unshop-ui[data-mode=inline]{position:static!important;margin:6px 0 8px!important;animation:unshop-in .3s ease both!important}
+.unshop-ui[data-mode=inline] .unshop-reject{margin:0!important}
+
+/* Passed: the card collapses to one quiet row */
 .unshop-card.unshop-dimmed{min-height:0!important;height:auto!important;align-self:start!important;padding:0!important;grid-column:1/-1!important}
 .unshop-card.unshop-dimmed>:not(.unshop-ui){display:none!important}
-.unshop-card.unshop-dimmed .unshop-ui{position:static!important;align-items:center!important;padding:8px!important;border:1px dashed #cfd8cf!important;border-radius:12px!important;background:#f4f7f1!important}
-.unshop-card.unshop-dimmed .unshop-badge{max-width:none!important;flex:1 1 auto!important;min-width:0!important;box-shadow:none!important}
-/* "Hide poor fits" switch in the panel. */
+.unshop-ui[data-mode=strip]{position:static!important;padding:6px 6px 6px 14px!important;border-radius:12px!important;background:#f5f5f7!important;animation:unshop-in .3s ease both!important}
+.unshop-ui[data-mode=strip] .unshop-badge{flex:1 1 auto!important;padding:0!important;border:0!important;background:transparent!important;box-shadow:none!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;color:#86868b!important;font-weight:400!important}
+.unshop-ui[data-mode=strip] .unshop-badge::before{display:none!important}
+.unshop-ui[data-mode=strip] .unshop-reject{border:0!important;background:transparent!important;box-shadow:none!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;color:#0071e3!important}
+.unshop-ui[data-mode=strip] .unshop-reject:hover{background:#e8e8ed!important}
+
 .unshop-card.unshop-hidden{display:none!important}
-.unshop-card.unshop-better{box-shadow:inset 0 0 0 2px #8fcf4a!important;border-radius:10px!important}
-.unshop-card.unshop-conflict{box-shadow:inset 0 0 0 1px #f0cf86!important;border-radius:10px!important}
-.unshop-card.unshop-flash{animation:unshop-flash 1.5s ease-out!important}
-@keyframes unshop-flash{0%,30%{box-shadow:inset 0 0 0 3px #13241b}100%{box-shadow:inset 0 0 0 0 transparent}}
+.unshop-card.unshop-conflict{box-shadow:none!important}
+.unshop-card.unshop-restoring>:not(.unshop-ui){animation:unshop-in .3s ease both!important}
+.unshop-card.unshop-flash{animation:unshop-flash 1.4s ease-out!important}
+.unshop-badge.unshop-pop{animation:unshop-in .3s ease!important}
+
+@keyframes unshop-in{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:none}}
+@keyframes unshop-flash{0%,35%{box-shadow:inset 0 0 0 2px #0071e3}100%{box-shadow:inset 0 0 0 2px transparent}}
+
+@media (prefers-reduced-motion: reduce){
+  .unshop-ui,.unshop-ui *,.unshop-card,.unshop-card>*{animation:none!important;transition:none!important}
+}

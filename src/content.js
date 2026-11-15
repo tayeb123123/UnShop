@@ -26,116 +26,161 @@
   const root = host.attachShadow({ mode: 'open' });
   const style = document.createElement('style');
   style.textContent = `
-:host{all:initial;--ink:#13241b;--ink2:#46594d;--mute:#7b8b80;--line:#e4e9e3;--bg:#ffffff;--soft:#f4f7f1;--lime:#c9f16b;--lime2:#e9fbc4;--green:#2f7d4f;--coral:#d4492f;--coral2:#fdece7;--amber:#a86a00;--amber2:#fff4dc;
-  font:13.5px/1.45 ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--ink);position:fixed;right:18px;top:84px;z-index:2147483640;-webkit-font-smoothing:antialiased}
-*{box-sizing:border-box}button,input,textarea{font:inherit;color:inherit}button{cursor:pointer}button:disabled{opacity:.45;cursor:default}
-:focus-visible{outline:2px solid var(--green);outline-offset:2px}
-.panel{width:360px;max-width:calc(100vw - 28px);max-height:calc(100vh - 100px);display:flex;flex-direction:column;background:var(--bg);border:1px solid var(--line);border-radius:18px;box-shadow:0 18px 50px -12px rgba(19,36,27,.28),0 2px 6px rgba(19,36,27,.06);overflow:hidden}
+:host{all:initial;--text:#1d1d1f;--text2:#6e6e73;--text3:#86868b;--sep:rgba(0,0,0,.1);--fill:#f5f5f7;--fill2:#e8e8ed;--bg:#fff;
+  --accent:#0071e3;--accent-hover:#0077ed;--green:#34c759;--green-text:#248a3d;--red-text:#d70015;--orange:#ff9f0a;--orange-text:#b25000;
+  --ease:cubic-bezier(.25,.1,.25,1);
+  font:13px/1.45 -apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",system-ui,sans-serif;color:var(--text);position:fixed;right:20px;top:84px;z-index:2147483640;-webkit-font-smoothing:antialiased;letter-spacing:-.01em}
+*{box-sizing:border-box}button,input,textarea{font:inherit;color:inherit;letter-spacing:inherit}button{cursor:pointer}button:disabled{opacity:.4;cursor:default}
+:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(0,113,227,.35)}
 .hidden{display:none!important}
-header{display:flex;align-items:center;gap:10px;padding:14px 14px 12px 16px;border-bottom:1px solid var(--line)}
-.mark{width:32px;height:32px;border-radius:10px;background:var(--ink);color:var(--lime);display:grid;place-items:center;font-weight:800;font-size:15px;letter-spacing:-.5px;flex:none}
-.brand{line-height:1.15}.brand b{font-size:15px;letter-spacing:-.2px}.brand small{display:block;color:var(--mute);font-size:11.5px}
-.pill{margin-left:auto;display:inline-flex;align-items:center;gap:6px;padding:4px 9px;border-radius:99px;background:var(--soft);font-size:11px;font-weight:600;color:var(--ink2);white-space:nowrap}
-.dot{width:7px;height:7px;border-radius:50%;background:#b8c2bb}.pill[data-s=online] .dot{background:#34a853}.pill[data-s=thinking] .dot{background:#7cc242;animation:pulse 1s infinite}.pill[data-s=offline] .dot{background:#e0a03a}
-@keyframes pulse{50%{opacity:.25}}
-.icon{border:0;background:transparent;width:30px;height:30px;border-radius:8px;display:grid;place-items:center;color:var(--ink2);font-size:18px;line-height:1}.icon:hover{background:var(--soft)}
-.scroll{overflow:auto;padding:14px 16px 4px}
-.bubble{background:var(--soft);border-radius:4px 14px 14px 14px;padding:10px 12px;font-size:13px;color:var(--ink2);margin-bottom:12px}
-.suggest{border:1px solid #c9f16b;background:#f7fde9;border-radius:14px;padding:10px 12px;margin-bottom:10px;font-size:12.5px;color:var(--ink2)}.suggest p{margin:0 0 8px}.suggest b{color:var(--ink)}.suggest-row{display:flex;gap:6px}
-.bubble b{color:var(--ink)}.bubble.err{background:var(--amber2);color:#6b4a07}
-.bubble.wait{background:linear-gradient(90deg,var(--soft),#e9fbc4,var(--soft));background-size:200% 100%;animation:shimmer 1.4s linear infinite;color:var(--ink)}
-@keyframes shimmer{to{background-position:-200% 0}}
+/* Panel */
+.panel{width:352px;max-width:calc(100vw - 32px);max-height:calc(100vh - 100px);display:flex;flex-direction:column;background:rgba(255,255,255,.92);-webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px);border:.5px solid var(--sep);border-radius:18px;box-shadow:0 12px 40px rgba(0,0,0,.12),0 1px 3px rgba(0,0,0,.06);overflow:hidden;transform-origin:top right;animation:panelIn .3s var(--ease) both}
+.panel.out{animation:panelOut .18s var(--ease) both}
+@keyframes panelIn{from{opacity:0;transform:translateY(-4px) scale(.98)}to{opacity:1;transform:none}}
+@keyframes panelOut{to{opacity:0;transform:scale(.98)}}
+header{display:flex;align-items:center;gap:10px;padding:14px 12px 12px 16px}
+.mark{width:28px;height:28px;flex:none;display:grid;place-items:center}
+.mark svg{width:28px;height:28px;display:block}
+.brand{line-height:1.2;min-width:0}.brand b{font-size:15px;font-weight:600;letter-spacing:-.02em}
+.brand small{display:block;color:var(--text2);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:170px}
+.pill{margin-left:auto;display:inline-flex;align-items:center;gap:6px;padding:3px 9px;border-radius:99px;background:var(--fill);font-size:11.5px;font-weight:500;color:var(--text2);white-space:nowrap}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--text3)}
+.pill[data-s=online] .dot{background:var(--green)}
+.pill[data-s=offline] .dot{background:var(--orange)}
+.pill[data-s=thinking] .dot{width:10px;height:10px;background:transparent;border:1.5px solid var(--fill2);border-top-color:var(--text2);animation:spin .8s linear infinite}
+.icon{border:0;background:var(--fill);width:24px;height:24px;border-radius:50%;display:grid;place-items:center;color:var(--text2);font-size:15px;line-height:1;transition:background .15s var(--ease)}
+.icon:hover{background:var(--fill2)}
+.progress{display:none}
+.scroll{overflow:auto;padding:2px 16px 8px;scrollbar-width:thin}
+.panel:not(.out) .scroll>*{animation:fadeIn .35s var(--ease) both}
+@keyframes fadeIn{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:none}}
+/* Message + similar-search offer */
+.bubble{background:var(--fill);border-radius:12px;padding:10px 12px;font-size:13px;color:var(--text2);margin-bottom:12px}
+.bubble b{color:var(--text);font-weight:600}.bubble.err{color:var(--orange-text)}
+.bubble.swap{animation:fadeIn .3s var(--ease)}
+.bubble.wait{color:var(--text);animation:breathe 1.6s ease-in-out infinite}
+@keyframes breathe{50%{opacity:.55}}
+.suggest{background:var(--fill);border-radius:12px;padding:12px;margin-bottom:10px;font-size:13px;color:var(--text2);animation:fadeIn .3s var(--ease) both}
+.suggest p{margin:0 0 10px}.suggest b{color:var(--text);font-weight:600}.suggest-row{display:flex;gap:6px}
+/* More / Less */
 .ask{display:flex;flex-direction:column;gap:6px}
-.field{display:flex;align-items:flex-start;gap:8px;border:1px solid var(--line);border-radius:12px;padding:6px 6px 6px 8px;background:#fff;transition:border-color .15s,box-shadow .15s}
-.field.more:focus-within{border-color:#9fc77a;box-shadow:0 0 0 3px #c9f16b55}.field.less:focus-within{border-color:#ee9f8e;box-shadow:0 0 0 3px #fdece7}
-.sign{flex:none;width:44px;height:24px;border-radius:7px;display:grid;place-items:center;font-size:11px;font-weight:750;letter-spacing:.02em;margin-top:2px}
-.more .sign{background:var(--lime2);color:#2c4a12}.less .sign{background:var(--coral2);color:#8c2a17}
-.field textarea{flex:1;border:0;resize:none;min-height:28px;max-height:96px;padding:4px 2px;outline:0;background:transparent;font-size:13px;line-height:1.4}
-.ask-row{display:flex;align-items:center;gap:6px;padding:0 0 0 2px}
-.chip.m{border-color:#d6efa8}.chip.l{border-color:#f6cdc3}
-.ask-row small{color:var(--mute);font-size:11px;margin-right:auto}
-.go{border:0;background:var(--ink);color:#fff;font-weight:650;border-radius:10px;padding:7px 13px;display:inline-flex;align-items:center;gap:6px}.go:hover:not(:disabled){background:#24402f}
-.spin{width:12px;height:12px;border:2px solid #ffffff55;border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
-.chips{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 2px}
-.chip{border:1px solid var(--line);background:#fff;border-radius:99px;padding:4px 10px;font-size:12px;color:var(--ink2)}.chip:hover{border-color:#b9c9b9;background:var(--soft)}
-h3{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--mute);margin:18px 0 8px;font-weight:700;display:flex;align-items:center;gap:8px}
-h3 span{margin-left:auto;text-transform:none;letter-spacing:0;font-weight:500}
+.field{display:flex;align-items:flex-start;gap:10px;border-radius:10px;padding:7px 10px;background:var(--fill);transition:box-shadow .15s var(--ease),background .15s var(--ease)}
+.field:focus-within{background:var(--bg);box-shadow:0 0 0 1px var(--accent),0 0 0 4px rgba(0,113,227,.15)}
+.sign{flex:none;width:34px;font-size:12px;font-weight:600;margin-top:5px;color:var(--text2)}
+.more .sign{color:var(--green-text)}.less .sign{color:var(--red-text)}
+.field textarea{flex:1;border:0;resize:none;min-height:26px;max-height:96px;padding:4px 0;outline:0;background:transparent;font-size:13px;line-height:1.4}
+.field textarea::placeholder{color:var(--text3)}
+.ask-row{display:flex;align-items:center;gap:6px;padding:2px 0 0 2px}
+.ask-row small{color:var(--text3);font-size:11.5px;margin-right:auto}
+.go{border:0;background:var(--accent);color:#fff;font-weight:500;border-radius:99px;padding:6px 15px;display:inline-flex;align-items:center;gap:7px;font-size:13px;transition:background .15s var(--ease),transform .1s var(--ease)}
+.go:hover:not(:disabled){background:var(--accent-hover)}
+.go:active:not(:disabled){transform:scale(.97)}
+.spin{width:11px;height:11px;border:1.5px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .8s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 0}
+.chip{border:0;background:var(--fill);border-radius:99px;padding:4px 11px;font-size:12px;color:var(--text);transition:background .15s var(--ease)}
+.chip:hover{background:var(--fill2)}
+.status{font-size:12px;color:var(--text2);margin:10px 0 0}.status:empty{display:none}.status:not(:empty){animation:fadeIn .25s var(--ease)}
+/* Section titles */
+h3{font-size:13px;font-weight:600;color:var(--text);margin:20px 0 8px;display:flex;align-items:baseline;gap:8px;letter-spacing:-.01em}
+h3 span{margin-left:auto;font-weight:400;font-size:12px;color:var(--text3)}
+/* Learned preferences */
 .prefs{display:flex;flex-wrap:wrap;gap:6px}
-.pref{display:inline-flex;align-items:center;gap:4px;border-radius:99px;padding:3px 4px 3px 10px;font-size:12px;font-weight:600;background:var(--lime2);color:#2c4a12}
-.pref.neg{background:var(--coral2);color:#8c2a17}.pref.info{background:var(--soft);color:var(--ink2)}
-.pref button{border:0;background:transparent;width:18px;height:18px;border-radius:50%;font-size:13px;line-height:1;color:inherit;opacity:.6;padding:0}.pref button:hover{opacity:1;background:#0000000f}
-.empty{color:var(--mute);font-size:12.5px;margin:0}
-.notes{font-size:12px;color:var(--ink2);margin:8px 0 0;font-style:italic}
+.pref{display:inline-flex;align-items:center;gap:3px;padding:4px 5px 4px 11px;font-size:12px;font-weight:500;background:var(--fill);color:var(--text);border-radius:99px}
+.pref.neg{color:var(--red-text)}.pref.info{color:var(--text2);padding-right:11px}
+.pref.new{animation:fadeIn .3s var(--ease) both;animation-delay:calc(var(--i,0) * 30ms)}
+.pref button{border:0;background:transparent;width:18px;height:18px;border-radius:50%;font-size:13px;line-height:1;color:var(--text3);padding:0;transition:background .15s var(--ease),color .15s}
+.pref button:hover{background:var(--fill2);color:var(--text)}
+.empty{color:var(--text3);font-size:12.5px;margin:0}
+.notes{font-size:12px;color:var(--text2);margin:8px 0 0}
+/* Shortlist: a plain list with hairline separators */
 ol{list-style:none;margin:0;padding:0}
-.item{display:grid;grid-template-columns:48px 1fr;gap:10px;padding:9px 6px;border-radius:12px;cursor:pointer;border:0;background:transparent;text-align:left;width:100%}
-.item:hover{background:var(--soft)}
-.thumb{width:48px;height:48px;border-radius:9px;background:var(--soft);object-fit:contain;display:block}
-.t{font-size:12.5px;font-weight:600;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.meta{display:flex;align-items:center;gap:8px;margin-top:4px;font-size:11.5px;color:var(--ink2)}
-.price{font-weight:700;color:var(--ink)}
-.bar{flex:1;height:5px;background:#edf0ec;border-radius:9px;overflow:hidden;max-width:80px}.bar i{display:block;height:100%;background:var(--green);border-radius:9px}
-.bar.warn i{background:#e0a03a}
-.why{font-size:11.5px;color:var(--mute);margin-top:2px}
-.why.neg{color:var(--coral)}
-.search{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:14px 0 6px;padding:10px 12px;border-radius:12px;background:var(--ink);color:#fff;text-decoration:none;font-weight:600;font-size:12.5px}
-.search:hover{background:#24402f}.search span{opacity:.75;font-weight:500}
-footer{display:flex;align-items:center;gap:4px;padding:8px 10px;border-top:1px solid var(--line);font-size:12px;color:var(--mute)}
-.ghost{border:0;background:transparent;border-radius:8px;padding:5px 8px;color:var(--ink2);font-size:12px}.ghost:hover:not(:disabled){background:var(--soft)}
-footer .sp{margin-left:auto}
-.hp{display:flex;align-items:center;gap:8px;margin:0 0 8px;padding:8px 10px;border-radius:12px;background:var(--soft);font-size:12.5px;font-weight:600;cursor:pointer}
+ol li+li .item{border-top:.5px solid var(--sep)}
+.item{position:relative;display:grid;grid-template-columns:16px 44px 1fr;align-items:center;gap:10px;padding:10px 2px;cursor:pointer;border:0;background:transparent;text-align:left;width:100%;border-radius:0;transition:background .15s var(--ease)}
+.item:hover{background:rgba(0,0,0,.025)}
+.item.enter{animation:fadeIn .3s var(--ease) both;animation-delay:calc(var(--i,0) * 35ms)}
+.rank{font-size:12px;font-weight:500;color:var(--text3);text-align:center;font-variant-numeric:tabular-nums}
+.item.top .rank{color:var(--accent);font-weight:600}
+.item.top::after{content:"Best fit";position:absolute;top:10px;right:2px;font-size:11px;font-weight:500;color:var(--accent)}
+.item.top .t{padding-right:52px}
+.thumb{width:44px;height:44px;border-radius:8px;background:var(--fill);object-fit:contain;display:block}
+.t{font-size:13px;font-weight:500;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;color:var(--text);line-height:1.3}
+.meta{display:flex;align-items:center;gap:8px;margin-top:4px;font-size:12px;color:var(--text2)}
+.price{font-weight:600;color:var(--text);font-variant-numeric:tabular-nums}
+.bar{flex:1;height:4px;background:var(--fill2);border-radius:9px;overflow:hidden;max-width:80px}
+.bar i{display:block;height:100%;width:100%;transform-origin:left;background:var(--green);border-radius:9px;transition:transform .6s var(--ease)}
+.bar.warn i{background:var(--orange)}
+.pct{font-variant-numeric:tabular-nums;min-width:30px;color:var(--text2)}
+.why{font-size:12px;color:var(--text3);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.why.neg{color:var(--orange-text)}
+/* iOS-style switch */
+.hp{display:flex;align-items:center;gap:10px;margin:0 0 4px;padding:8px 0;font-size:13px;cursor:pointer}
 .hp input{position:absolute;opacity:0;pointer-events:none}
-.sw{width:30px;height:18px;border-radius:99px;background:#cdd5ce;position:relative;flex:none;transition:background .15s}
-.sw::after{content:"";position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:#fff;box-shadow:0 1px 2px #0003;transition:transform .15s}
-.hp input:checked+.sw{background:var(--green)}.hp input:checked+.sw::after{transform:translateX(12px)}
-.hp input:focus-visible+.sw{outline:2px solid var(--green);outline-offset:2px}
-.hp small{margin-left:auto;color:var(--mute);font-weight:500}
-.status{font-size:12px;color:var(--green);min-height:0;margin:8px 0 0}.status:empty{display:none}
-.launcher{display:flex;align-items:center;gap:8px;border:1px solid var(--line);background:#fff;border-radius:99px;padding:6px 14px 6px 6px;box-shadow:0 10px 30px -8px rgba(19,36,27,.3);font-weight:650}
-.launcher .mark{width:28px;height:28px;border-radius:50%;font-size:13px}.launcher small{color:var(--mute);font-weight:500}
-dialog{border:0;border-radius:20px;padding:0;width:420px;max-width:calc(100vw - 28px);color:var(--ink);background:#fff;box-shadow:0 30px 80px -10px rgba(19,36,27,.45)}
-dialog::backdrop{background:rgba(19,36,27,.38);backdrop-filter:blur(2px)}
+.hp>span:nth-of-type(2){order:-1}
+.sw{order:2;width:38px;height:23px;border-radius:99px;background:var(--fill2);position:relative;flex:none;transition:background .2s var(--ease)}
+.sw::after{content:"";position:absolute;top:2px;left:2px;width:19px;height:19px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.2),0 0 0 .5px rgba(0,0,0,.04);transition:transform .25s var(--ease)}
+.hp input:checked+.sw{background:var(--green)}.hp input:checked+.sw::after{transform:translateX(15px)}
+.hp input:focus-visible+.sw{box-shadow:0 0 0 3px rgba(0,113,227,.35)}
+.hp small{margin-left:auto;color:var(--text3);font-size:12px}
+/* Refined search */
+.search{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:12px 0 8px;padding:10px 12px;border-radius:10px;background:var(--fill);color:var(--accent);text-decoration:none;font-weight:500;font-size:13px;transition:background .15s var(--ease)}
+.search:hover{background:var(--fill2)}
+.search span{color:var(--text3);font-weight:400;white-space:nowrap}
+footer{display:flex;align-items:center;gap:2px;padding:8px 10px;border-top:.5px solid var(--sep);font-size:12.5px}
+.ghost{border:0;background:transparent;border-radius:8px;padding:5px 8px;color:var(--accent);font-size:12.5px;transition:background .15s var(--ease)}.ghost:hover:not(:disabled){background:var(--fill)}
+footer .sp{margin-left:auto}
+/* Minimised */
+.launcher{display:flex;align-items:center;gap:8px;border:.5px solid var(--sep);color:var(--text);background:rgba(255,255,255,.92);-webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px);border-radius:99px;padding:5px 14px 5px 6px;box-shadow:0 6px 20px rgba(0,0,0,.12);font-weight:600;font-size:13px;animation:panelIn .25s var(--ease) both}
+.launcher .mark{width:24px;height:24px}.launcher .mark svg{width:24px;height:24px}.launcher small{color:var(--text2);font-weight:400}
+/* Rejection sheet */
+dialog{border:0;border-radius:16px;padding:0;width:420px;max-width:calc(100vw - 32px);color:var(--text);background:var(--bg);box-shadow:0 20px 60px rgba(0,0,0,.2),0 0 0 .5px var(--sep)}
+dialog[open]{animation:sheetIn .25s var(--ease) both}
+dialog::backdrop{background:rgba(0,0,0,.25);animation:dim .25s var(--ease) both}
+@keyframes sheetIn{from{opacity:0;transform:scale(.98)}to{opacity:1;transform:none}}
+@keyframes dim{from{opacity:0}}
 dialog form{padding:20px}
-.dh{display:flex;gap:12px;align-items:center;margin-bottom:14px}
-.dh img,.dh .thumb{width:56px;height:56px;border-radius:12px;flex:none}
-.dh h2{font-size:17px;margin:0 0 2px;letter-spacing:-.2px}.dh p{margin:0;font-size:12px;color:var(--ink2);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.dh{display:flex;gap:12px;align-items:center;margin-bottom:18px}
+.dh img,.dh .thumb{width:52px;height:52px;border-radius:10px;flex:none;background:var(--fill);object-fit:contain}
+.dh h2{font-size:17px;font-weight:600;margin:0 0 2px;letter-spacing:-.02em}.dh p{margin:0;font-size:12px;color:var(--text2);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .close{margin-left:auto;align-self:flex-start}
-fieldset{border:0;padding:0;margin:0}legend{font-size:12px;font-weight:650;color:var(--ink2);margin-bottom:8px}
-.reasons{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.reasons label{display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:12px;padding:9px 10px;font-size:12.5px;font-weight:600;cursor:pointer}
-.reasons label:hover{background:var(--soft)}.reasons input{position:absolute;opacity:0;pointer-events:none}
-.reasons label:has(input:checked){border-color:var(--ink);background:var(--soft);box-shadow:inset 0 0 0 1px var(--ink)}
-.reasons label:has(input:focus-visible){outline:2px solid var(--green);outline-offset:2px}
-.ri{width:22px;height:22px;border-radius:7px;background:var(--soft);display:grid;place-items:center;font-size:12px;flex:none}
-.note-label{display:block;font-size:12px;font-weight:650;color:var(--ink2);margin:14px 0 6px}
-.note{width:100%;min-height:64px;border:1px solid var(--line);border-radius:12px;padding:9px 11px;resize:vertical;outline:0}.note:focus{border-color:#9fc77a;box-shadow:0 0 0 3px #c9f16b55}
-.actions{display:flex;gap:8px;justify-content:flex-end;margin-top:14px}
-.error{color:var(--coral);font-size:12px;margin:8px 0 0}.error:empty{display:none}
-.hint{font-size:11.5px;color:var(--mute);margin:8px 0 0}
+fieldset{border:0;padding:0;margin:0}legend{font-size:12px;color:var(--text2);margin-bottom:8px}
+.reasons{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.reasons label{display:flex;align-items:center;gap:8px;background:var(--fill);border-radius:10px;padding:10px 12px;font-size:13px;cursor:pointer;transition:background .15s var(--ease),color .15s,box-shadow .15s}
+.reasons label:hover{background:var(--fill2)}
+.reasons input{position:absolute;opacity:0;pointer-events:none}
+.reasons label:has(input:checked){background:rgba(0,113,227,.1);color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.reasons label:has(input:focus-visible){box-shadow:0 0 0 3px rgba(0,113,227,.35)}
+.ri{display:none}
+.note-label{display:block;font-size:12px;color:var(--text2);margin:16px 0 6px}
+.note{width:100%;min-height:64px;border:0;border-radius:10px;padding:10px 12px;resize:vertical;outline:0;background:var(--fill);transition:box-shadow .15s var(--ease),background .15s}.note:focus{background:var(--bg);box-shadow:0 0 0 1px var(--accent),0 0 0 4px rgba(0,113,227,.15)}
+.actions{display:flex;gap:8px;justify-content:flex-end;margin-top:18px}
+.actions .ghost{color:var(--accent)}
+.error{color:var(--red-text);font-size:12px;margin:8px 0 0}.error:empty{display:none}
+@media (prefers-reduced-motion: reduce){*,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;animation-delay:0s!important;transition-duration:.001ms!important}}
 `;
   root.append(style);
   const wrap = document.createElement('div');
   wrap.innerHTML = `
-<button class="launcher hidden" type="button" aria-label="Open UnShop"><span class="mark">u−</span>UnShop <small class="lc"></small></button>
+<button class="launcher hidden" type="button" aria-label="Open UnShop"><span class="mark"><svg viewBox="0 0 28 28" aria-hidden="true"><rect width="28" height="28" rx="7" fill="#1d1d1f"/><path d="M9 14.5h10" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/></svg></span>UnShop <small class="lc"></small></button>
 <section class="panel" aria-label="UnShop shopping preferences">
-  <header><span class="mark" aria-hidden="true">u−</span><div class="brand"><b>UnShop</b><small class="scope"></small></div>
+  <header><span class="mark" aria-hidden="true"><svg viewBox="0 0 28 28" aria-hidden="true"><rect width="28" height="28" rx="7" fill="#1d1d1f"/><path d="M9 14.5h10" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/></svg></span><div class="brand"><b>UnShop</b><small class="scope"></small></div>
     <span class="pill" data-s="checking" role="status"><span class="dot"></span><span class="pl">Checking AI…</span></span>
-    <button class="icon collapse" type="button" aria-label="Minimize UnShop" title="Minimize">–</button></header>
+    <button class="icon collapse" type="button" aria-label="Minimize UnShop" title="Minimize">–</button><span class="progress" aria-hidden="true"></span></header>
   <div class="scroll">
     <div class="suggest hidden" role="group" aria-label="Preferences from a similar search"><p></p><div class="suggest-row"><button class="go" id="useSimilar" type="button">Use them</button><button class="ghost" id="dismissSimilar" type="button">Start fresh</button></div></div>
     <div class="bubble" aria-live="polite"></div>
     <div class="ask">
-      <div class="field more"><span class="sign" aria-hidden="true">MORE</span><textarea id="more" aria-label="More of" maxlength="500" rows="1" placeholder="smaller, digital, cheaper…"></textarea></div>
-      <div class="field less"><span class="sign" aria-hidden="true">LESS</span><textarea id="less" aria-label="Less of" maxlength="500" rows="1" placeholder="bulky, flashy, over $80…"></textarea></div>
+      <div class="field more"><span class="sign" aria-hidden="true">More</span><textarea id="more" aria-label="More of" maxlength="500" rows="1" placeholder="smaller, digital, cheaper…"></textarea></div>
+      <div class="field less"><span class="sign" aria-hidden="true">Less</span><textarea id="less" aria-label="Less of" maxlength="500" rows="1" placeholder="bulky, flashy, over $80…"></textarea></div>
       <div class="ask-row"><small class="mode-hint"></small><button class="go" id="learn" type="button">Refine</button></div></div>
     <div class="chips suggestions"></div>
     <p class="status" role="status"></p>
     <h3>What I’ve learned</h3><div class="prefs"></div><p class="notes hidden"></p>
     <h3>Best fits on this page <span class="count"></span></h3>
-    <label class="hp"><input type="checkbox" id="hidePoor"><span class="sw" aria-hidden="true"></span><span>Hide poor fits on the page</span><small class="hc"></small></label>
+    <label class="hp"><input type="checkbox" id="hidePoor"><span class="sw" aria-hidden="true"></span><span>Hide poor fits</span><small class="hc"></small></label>
     <ol class="ranked"></ol>
     <a class="search" id="search" target="_blank" rel="noopener noreferrer"></a>
   </div>
-  <footer><button class="ghost" id="undo" type="button">↶ Undo</button><button class="ghost" id="reset" type="button">Reset</button><span class="sp"></span><button class="ghost" id="settings" type="button">Settings</button></footer>
+  <footer><button class="ghost" id="undo" type="button">Undo</button><button class="ghost" id="reset" type="button">Reset</button><span class="sp"></span><button class="ghost" id="settings" type="button">Settings</button></footer>
 </section>`;
   root.append(...wrap.children);
   document.body.append(host);
@@ -144,6 +189,10 @@ fieldset{border:0;padding:0;margin:0}legend{font-size:12px;font-weight:650;color
   let statusTimer;
   const status = (message, tone = 'ok') => { const el = $('.status'); el.textContent = message; el.style.color = tone === 'err' ? 'var(--coral)' : ''; clearTimeout(statusTimer); if (message) statusTimer = setTimeout(() => { el.textContent = ''; }, 6000); };
   const money = p => Number.isFinite(p) ? `$${p.toFixed(2)}` : 'Price n/a';
+  // Motion helpers. Everything respects the OS "reduce motion" setting.
+  const calm = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const animate = (el, frames, opts) => (!calm() && el.animate) ? el.animate(frames, { easing: 'cubic-bezier(.2,.8,.2,1)', ...opts }) : { finished: Promise.resolve() };
+  const replay = (el, cls) => { el.classList.toggle(cls, false); void el.offsetWidth; el.classList.add(cls); };
 
   /* ---------- Storage & messaging ---------- */
   function storageGet(k) {
@@ -200,9 +249,59 @@ fieldset{border:0;padding:0;margin:0}legend{font-size:12px;font-weight:650;color
   }
   function detach(card, entry) {
     entry?.ui.remove();
+    entry?.media?.classList.toggle('unshop-media', false);
+    entry?.media?.classList.toggle('unshop-media-rel', false);
     card.classList.remove('unshop-card', 'unshop-dimmed', 'unshop-better', 'unshop-conflict', 'unshop-hidden');
     cards.delete(card);
   }
+  /* Controls sit on the product *image* (bottom edge), never over the title or description.
+     Anchor = the nearest wrapper around the main image that contains no text of its own
+     (titles, prices and descriptions all have text) and isn't a link. No such wrapper → a small
+     row above the card content, in the normal flow, so it pushes text down instead of covering it. */
+  const textLength = el => {
+    let n = 0;
+    const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, { acceptNode: t => t.parentElement?.closest('[data-unshop-owned]') ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT });
+    while (walker.nextNode() && n <= 30) n += walker.currentNode.nodeValue.replace(/\s+/g, '').length;
+    return n;
+  };
+  function mediaBox(card) {
+    let img = null, area = 0;
+    for (const el of card.querySelectorAll('img')) {
+      const r = el.getBoundingClientRect(), a = r.width * r.height;
+      if (r.width >= 60 && r.height >= 60 && a > area) { img = el; area = a; }
+    }
+    if (!img) return null;
+    const r = img.getBoundingClientRect();
+    for (let box = img.parentElement; box && box !== card; box = box.parentElement) {
+      const b = box.getBoundingClientRect();
+      if (b.height > r.height * 1.6 + 40 || textLength(box) > 30) break;  // grew past the image area
+      const display = getComputedStyle(box).display;
+      if (box.tagName !== 'A' && !box.closest('a') && display !== 'inline' && display !== 'contents' && b.width >= 100 && b.height >= 80) return box;
+    }
+    return null;
+  }
+  function place(card, entry, rejected) {
+    let mode = 'inline', target = card;
+    if (rejected) mode = 'strip';
+    else {
+      if (!entry.media || !entry.media.isConnected || !card.contains(entry.media)) entry.media = mediaBox(card);
+      if (entry.media) { mode = 'media'; target = entry.media; }
+    }
+    if (entry.ui.dataset.mode !== mode) entry.ui.dataset.mode = mode;
+    if (mode === 'media') {
+      entry.media.classList.add('unshop-media');
+      if (getComputedStyle(entry.media).position === 'static') entry.media.classList.add('unshop-media-rel');
+      if (entry.ui.parentElement !== target) target.append(entry.ui);
+    } else if (card.firstElementChild !== entry.ui) card.prepend(entry.ui);
+  }
+  // Images often load after the first scan; once they do, move fallback-row controls onto the image.
+  let relayoutTimer;
+  function relayout() {
+    relayoutTimer = null;
+    paused(() => { for (const [card, entry] of cards) if (entry.ui.dataset.mode === 'inline' && !state.rejected[entry.product.id]) place(card, entry, false); });
+  }
+  const scheduleRelayout = (ms = 150) => { if (!relayoutTimer) relayoutTimer = setTimeout(relayout, ms); };
+  document.addEventListener('load', e => { if (e.target instanceof HTMLImageElement && e.target.closest(selector)) scheduleRelayout(); }, true);
   function scan() {
     timer = null; diagnostics.scans++;
     paused(() => {
@@ -223,10 +322,11 @@ fieldset{border:0;padding:0;margin:0}legend{font-size:12px;font-weight:650;color
         }
         entry.product = product;
         card.classList.add('unshop-card');
-        if (entry.ui.parentElement !== card) card.prepend(entry.ui);
+        if (!entry.ui.isConnected) place(card, entry, Boolean(state.rejected[product.id]));
       }
       diagnostics.cards = cards.size; render();
     });
+    scheduleRelayout(1200);
     maybeAutoScore();
   }
   // Stores attach their own click/mousedown handlers to result cards. Intercept ours at the
@@ -246,7 +346,7 @@ fieldset{border:0;padding:0;margin:0}legend{font-size:12px;font-weight:650;color
 
   /* ---------- Rendering ---------- */
   function pref(label, cls, kind, value) {
-    const el = document.createElement('span'); el.className = `pref ${cls}`; el.textContent = label;
+    const el = document.createElement('span'); el.className = `pref ${cls}`; el.textContent = label; el.dataset.k = label;
     const x = document.createElement('button'); x.type = 'button'; x.textContent = '×'; x.setAttribute('aria-label', `Remove ${label}`);
     x.onclick = () => commit(s => M.removePreference(s, kind, value), `Removed “${label}”.`);
     el.append(x); return el;
@@ -260,19 +360,22 @@ fieldset{border:0;padding:0;margin:0}legend{font-size:12px;font-weight:650;color
       const rejectedCount = Object.keys(state.rejected).length;
       const active = M.hasPreferences(state);
       // Bubble
-      const bubble = $('.bubble'); bubble.classList.remove('err');
+      const bubble = $('.bubble'), before = bubble.textContent; bubble.classList.toggle('err', false);
       if (state.summary) bubble.textContent = state.summary;
-      else if (!active) bubble.innerHTML = '<b>Not sure what you want?</b> Start with what you don’t. Hit <b>✕ Not for me</b> on any result, or tell me what you want <b>more</b> or <b>less</b> of below.';
-      else bubble.textContent = `${rejectedCount ? `Learning from ${rejectedCount} pass${rejectedCount === 1 ? '' : 'es'}.` : 'Using what you told me.'} Results that fit are outlined in green; conflicts in amber.`;
+      else if (!active) bubble.innerHTML = '<b>Not sure what you want?</b> Start with what you don’t. Press <b>Not for me</b> on any result, or tell me what you want <b>more</b> or <b>less</b> of below.';
+      else bubble.textContent = `${rejectedCount ? `Learning from ${rejectedCount} pass${rejectedCount === 1 ? '' : 'es'}.` : 'Using what you told me.'} Good fits get a green dot, conflicts an orange one.`;
       if (ai === 'offline' && lastAiError) { bubble.classList.add('err'); bubble.textContent = `${lastAiError} Using local rules for now.`; }
+      if (bubble.textContent !== before && !thinking) replay(bubble, 'swap');
       // Learned prefs
-      const prefs = $('.prefs'); prefs.replaceChildren();
+      const prefs = $('.prefs'), seen = new Set([...prefs.querySelectorAll('.pref')].map(el => el.dataset.k)); prefs.replaceChildren();
       if (state.budget) prefs.append(pref(`Under $${state.budget}`, '', 'budget'));
       if (state.compact) prefs.append(pref('Compact', '', 'compact'));
       if (state.priceTilt) prefs.append(pref(state.priceTilt === 'lower' ? 'Cheaper' : 'Higher-end', '', 'priceTilt'));
       for (const t of state.mustHave) prefs.append(pref(`+ ${t}`, '', 'mustHave', t));
       for (const t of state.avoid) prefs.append(pref(`− ${t}`, 'neg', 'avoid', t));
-      if (rejectedCount) { const el = document.createElement('span'); el.className = 'pref info'; el.textContent = `${rejectedCount} passed`; el.style.paddingRight = '10px'; prefs.append(el); }
+      if (rejectedCount) { const el = document.createElement('span'); el.className = 'pref info'; el.textContent = `${rejectedCount} passed`; el.dataset.k = 'passed'; prefs.append(el); }
+      let fresh = 0;
+      for (const el of prefs.querySelectorAll('.pref')) if (!seen.has(el.dataset.k)) { el.classList.add('new'); el.style.setProperty('--i', fresh++); }
       if (!prefs.children.length) { const p = document.createElement('p'); p.className = 'empty'; p.textContent = 'Nothing yet — your rejections will show up here.'; prefs.append(p); }
       $('.notes').textContent = state.notes; $('.notes').classList.toggle('hidden', !state.notes);
       $('#undo').disabled = !undo; $('#reset').disabled = !active && !state.summary;
@@ -287,8 +390,20 @@ fieldset{border:0;padding:0;margin:0}legend{font-size:12px;font-weight:650;color
         card.classList.toggle('unshop-conflict', active && !r.rejected && r.tone === 'conflict');
         const poor = active && !r.rejected && r.fit < POOR_FIT;
         if (poor) poorCount++;
-        card.classList.toggle('unshop-hidden', hidePoor && poor);
-        const label = r.rejected ? '↶ Restore' : '✕ Not for me';
+        const hide = hidePoor && poor, isHidden = card.classList.contains('unshop-hidden');
+        if (hide && !isHidden && !entry.hiding) {
+          entry.hiding = true;
+          animate(card, [{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'scale(.96)' }], { duration: 220 }).finished
+            .catch(() => {}).finally(() => { entry.hiding = false; if (hidePoor && entry.poor) paused(() => card.classList.add('unshop-hidden')); });
+        } else if (!hide && isHidden) {
+          card.classList.toggle('unshop-hidden', false);
+          animate(card, [{ opacity: 0, transform: 'scale(.97)' }, { opacity: 1, transform: 'none' }], { duration: 300 });
+        }
+        entry.poor = poor;
+        const wasRejected = entry.ui.dataset.mode === 'strip';
+        place(card, entry, r.rejected);
+        if (wasRejected !== r.rejected && entry.ui.isConnected) replay(card, r.rejected ? 'unshop-collapsing' : 'unshop-restoring');
+        const label = r.rejected ? 'Restore' : 'Not for me';
         if (entry.button.textContent !== label) entry.button.textContent = label;
         entry.button.setAttribute('aria-label', `${r.rejected ? 'Restore' : 'Not for me'}: ${entry.product.title}`);
         entry.button.dataset.state = r.rejected ? 'rejected' : 'active';
@@ -296,8 +411,8 @@ fieldset{border:0;padding:0;margin:0}legend{font-size:12px;font-weight:650;color
         if (r.rejected) badge = `You passed on: ${entry.product.title}`;
         else if (active && r.ai) badge = `${r.fit}% fit`;
         else if (active && r.conflicts.length) badge = r.conflicts[0];
-        else if (active && r.matches.length) badge = `✓ ${r.matches[0]}`;
-        if (entry.badge.textContent !== badge) entry.badge.textContent = badge;
+        else if (active && r.matches.length) badge = r.matches[0];
+        if (entry.badge.textContent !== badge) { entry.badge.textContent = badge; if (badge && !r.rejected) replay(entry.badge, 'unshop-pop'); }
         entry.badge.dataset.tone = r.tone; entry.badge.hidden = !badge;
         entry.badge.title = r.reasons.join(' · ');
         if (!r.rejected) ranked.push({ card, entry, r });
@@ -305,24 +420,40 @@ fieldset{border:0;padding:0;margin:0}legend{font-size:12px;font-weight:650;color
       ranked.sort((a, b) => b.r.score - a.r.score);
       $('#hidePoor').checked = hidePoor;
       $('.hc').textContent = !active ? 'learn something first' : poorCount ? `${poorCount} ${hidePoor ? 'hidden' : 'below ' + POOR_FIT + '%'}` : 'none right now';
-      const list = $('.ranked'); list.replaceChildren();
+      const list = $('.ranked');
+      // FLIP: remember where each shortlisted product was, so re-ranking glides instead of jumping.
+      const prev = new Map([...list.querySelectorAll('.item')].map(el => [el.dataset.id, { top: el.getBoundingClientRect().top, fit: Number(el.dataset.fit) }]));
+      list.replaceChildren();
       $('.count').textContent = cards.size ? `${ranked.length} of ${cards.size}` : '';
-      for (const { card, entry, r } of ranked.slice(0, 5)) {
+      const placed = [];
+      for (const [i, { card, entry, r }] of ranked.slice(0, 5).entries()) {
         const li = document.createElement('li'), item = document.createElement('button');
-        item.type = 'button'; item.className = 'item'; item.title = 'Show this result on the page';
+        item.type = 'button'; item.className = `item${i === 0 && active ? ' top' : ''}`; item.title = 'Show this result on the page';
+        item.dataset.id = entry.product.id; item.dataset.fit = r.fit;
+        const rank = document.createElement('span'); rank.className = 'rank'; rank.textContent = i + 1;
         const img = document.createElement(entry.product.image ? 'img' : 'span'); img.className = 'thumb';
         if (entry.product.image) { img.src = entry.product.image; img.alt = ''; }
         const body = document.createElement('div');
         const t = document.createElement('div'); t.className = 't'; t.textContent = entry.product.title;
         const meta = document.createElement('div'); meta.className = 'meta';
         const price = document.createElement('span'); price.className = 'price'; price.textContent = money(entry.product.price);
-        const bar = document.createElement('span'); bar.className = `bar${r.tone === 'conflict' ? ' warn' : ''}`; const fill = document.createElement('i'); fill.style.width = `${r.fit}%`; bar.append(fill);
-        const pct = document.createElement('span'); pct.textContent = `${r.fit}%`;
+        const bar = document.createElement('span'); bar.className = `bar${r.tone === 'conflict' ? ' warn' : ''}`; const fill = document.createElement('i'); bar.append(fill);
+        const old = prev.get(entry.product.id);
+        fill.style.transform = `scaleX(${(old ? old.fit : 0) / 100})`;
+        const pct = document.createElement('span'); pct.className = 'pct'; pct.textContent = `${r.fit}%`;
         meta.append(price, bar, pct);
         const why = document.createElement('div'); why.className = `why${r.tone === 'conflict' ? ' neg' : ''}`; why.textContent = r.reasons.slice(0, 2).join(' · ');
-        body.append(t, meta, why); item.append(img, body);
+        body.append(t, meta, why); item.append(rank, img, body);
         item.onclick = () => { card.scrollIntoView({ behavior: 'smooth', block: 'center' }); paused(() => card.classList.add('unshop-flash')); setTimeout(() => paused(() => card.classList.remove('unshop-flash')), 1600); };
         li.append(item); list.append(li);
+        placed.push({ item, fill, fit: r.fit, old, i });
+      }
+      for (const { item, fill, fit, old, i } of placed) {
+        if (old) {
+          const dy = old.top - item.getBoundingClientRect().top;
+          if (Math.abs(dy) > 1) animate(item, [{ transform: `translateY(${dy}px)` }, { transform: 'none' }], { duration: 420 });
+        } else { item.classList.add('enter'); item.style.setProperty('--i', i); }
+        requestAnimationFrame(() => requestAnimationFrame(() => { fill.style.transform = `scaleX(${fit / 100})`; }));
       }
       if (!cards.size) { const p = document.createElement('p'); p.className = 'empty'; p.textContent = 'No supported product cards found on this page yet.'; list.append(p); }
       launcher.querySelector('.lc').textContent = active ? `· ${Object.keys(state.rejected).length} passed` : '';
@@ -333,6 +464,7 @@ fieldset{border:0;padding:0;margin:0}legend{font-size:12px;font-weight:650;color
   function renderAi() {
     const pill = $('.pill'), label = thinking ? 'Thinking…' : { online: aiLabel, offline: 'Local rules', off: 'Local rules', checking: 'Checking AI…' }[ai];
     pill.dataset.s = thinking ? 'thinking' : ai; pill.querySelector('.pl').textContent = label;
+    panel.classList.toggle('thinking', thinking);
     pill.title = ai === 'online' ? `Preferences are interpreted by ${aiLabel} via your UnShop server.` : 'The AI server is unavailable; using built-in rules.';
     const go = $('#learn');
     go.disabled = thinking; go.innerHTML = thinking ? '<span class="spin"></span>Thinking' : 'Refine';
@@ -346,7 +478,7 @@ fieldset{border:0;padding:0;margin:0}legend{font-size:12px;font-weight:650;color
     const q = M.refineQuery(query(), state) || 'headphones';
     const a = $('#search'); a.href = demo ? S.SITES[0].searchUrl(q, state.budget) : site.searchUrl(q, state.budget);
     a.replaceChildren(document.createTextNode(`Search “${q}”${state.budget ? ` under $${state.budget}` : ''}`));
-    const s = document.createElement('span'); s.textContent = `${demo ? 'Amazon' : site.label} ↗`; a.append(s);
+    const s = document.createElement('span'); s.textContent = `${demo ? 'Amazon' : site.label} ›`; a.append(s);
   }
   // Following UnShop's own refined search carries these preferences to the new query.
   $('#search').addEventListener('click', () => {
@@ -414,7 +546,14 @@ fieldset{border:0;padding:0;margin:0}legend{font-size:12px;font-weight:650;color
       const icon = document.createElement('span'); icon.className = 'ri'; icon.textContent = r.icon; icon.setAttribute('aria-hidden', 'true');
       label.append(input, icon, document.createTextNode(r.label)); reasons.append(label);
     }
-    const close = () => { dialog.close(); dialog.remove(); if (entry.button.isConnected) entry.button.focus({ preventScroll: true }); };
+    // Close immediately: a modal dialog makes the page inert and returns focus when it closes,
+    // so delaying the close (for an exit animation) would steal focus from whatever the shopper clicked next.
+    let closing = false;
+    const close = () => {
+      if (closing) return; closing = true;
+      dialog.close(); dialog.remove();
+      if (entry.button.isConnected) entry.button.focus({ preventScroll: true });
+    };
     dialog.querySelector('.close').onclick = close; dialog.querySelector('.cancel').onclick = close;
     dialog.addEventListener('cancel', event => { event.preventDefault(); close(); });
     dialog.addEventListener('click', event => { if (event.target === dialog) close(); });
@@ -434,8 +573,12 @@ fieldset{border:0;padding:0;margin:0}legend{font-size:12px;font-weight:650;color
   }
 
   /* ---------- Panel controls ---------- */
+  let collapseTimer;
   function setCollapsed(value, save = true) {
-    collapsed = value; panel.classList.toggle('hidden', value); launcher.classList.toggle('hidden', !value);
+    collapsed = value; clearTimeout(collapseTimer);
+    const swap = () => { panel.classList.toggle('out', false); panel.classList.toggle('hidden', value); launcher.classList.toggle('hidden', !value); };
+    // Shrink the panel away first, then pop the launcher in (CSS animations run when each appears).
+    if (value && save && !calm()) { panel.classList.add('out'); collapseTimer = setTimeout(swap, 190); } else swap();
     if (save) saveUi();
   }
   function saveUi() { storageSet('unshopUi', { collapsed, hidePoor, dismissed }).catch(() => {}); }
@@ -448,11 +591,11 @@ fieldset{border:0;padding:0;margin:0}legend{font-size:12px;font-weight:650;color
     if (!more && !less) { status('Add something to More or Less first.', 'err'); $('#more').focus(); return; }
     if (ai === 'online') {
       const ok = await runAi({ more, less });
-      if (ok) { clearBoxes(); status(`Updated with ${aiLabel}.`); return; }
+      if (ok) { clearBoxes(); replay($('#learn'), 'done'); status(`Updated with ${aiLabel}.`); return; }
     }
     const { state: next, understood } = M.refineMoreLess(state, more, less, query());
     if (!understood.length) { status('I couldn’t pick out a feature there. Try short words like “smaller”, “metal”, “under $60”.', 'err'); return; }
-    if (await commit(next, `Got it: ${understood.join(', ')}.`)) clearBoxes();
+    if (await commit(next, `Got it: ${understood.join(', ')}.`)) { clearBoxes(); replay($('#learn'), 'done'); }
   };
   const grow = el => { el.style.height = 'auto'; el.style.height = `${Math.min(el.scrollHeight, 96)}px`; };
   for (const id of ['#more', '#less']) $(id).addEventListener('input', e => grow(e.target));

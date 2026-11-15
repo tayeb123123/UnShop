@@ -97,7 +97,7 @@ test('local mode: reject, restore, undo, reset and persistence', async ({ page }
   expect(saved.events[0].note).toBe('Too heavy for commuting');
   expect(saved.compact).toBe(true); expect(saved.avoid).toContain('heavy');
   await expect(page.locator('#unshop-root .prefs')).toContainText('Compact');
-  await page.getByRole('button', { name: '↶ Undo' }).click();
+  await page.getByRole('button', { name: 'Undo' }).click();
   await expect(page.locator('article')).not.toHaveClass(/unshop-dimmed/);
   await page.locator('.unshop-reject').click();
   await page.getByRole('button', { name: 'Hide & learn' }).click();
@@ -177,7 +177,7 @@ test('Hide poor fits removes low scorers reversibly; Claude only gets plausible 
   const visible = await page.locator('article:visible').count();
   await page.locator('#unshop-root .hp').click();
   await expect(page.locator('#unshop-root .hc')).toContainText('hidden');
-  expect(await page.locator('article:visible').count()).toBeLessThan(visible);
+  await expect.poll(() => page.locator('article:visible').count()).toBeLessThan(visible);
   await expect(page.locator('article[data-asin="P03"]')).toBeVisible();
   await page.reload();
   await inject(page);
@@ -258,7 +258,7 @@ for (const [id, store] of Object.entries(STORES)) {
     await page.getByLabel('More of').fill('under $50');
     await page.keyboard.press('Enter');
     await expect(page.locator('#unshop-root #search')).toHaveAttribute('href', store.link);
-    await expect(page.locator('#unshop-root #search')).toContainText(`${store.label} ↗`);
+    await expect(page.locator('#unshop-root #search')).toContainText(`${store.label} ›`);
     await page.locator('.unshop-reject').first().click();
     await page.getByRole('button', { name: 'Hide & learn' }).click();
     await expect(page.locator('.unshop-dimmed')).toHaveCount(1);
