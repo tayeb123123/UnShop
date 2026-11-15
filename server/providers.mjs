@@ -49,13 +49,15 @@ const withSchema = (user, schema) => `${user}\n\nRespond with only a JSON object
 
 /* ---------- Claude (Anthropic SDK, structured outputs) ---------- */
 let anthropic;
+// Server-side refusal fallback exists only for these models (Haiku has none).
+const FALLBACK_MODELS = new Set(['claude-fable-5-2', 'claude-fable-5-1', 'claude-opus-5-5', 'claude-opus-5', 'claude-sonnet-5-5']);
 async function callAnthropic({ system, user, zodSchema, model, env }) {
   anthropic ??= new Anthropic({ apiKey: env.ANTHROPIC_API_KEY || undefined });
+  const fallback = FALLBACK_MODELS.has(model) ? { betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default' } : {};
   const response = await anthropic.beta.messages.parse({
     model,
     max_tokens: 16000,
-    betas: ['server-side-fallback-2026-07-01'],
-    fallbacks: 'default',
+    ...fallback,
     output_config: { effort: 'low', format: betaZodOutputFormat(zodSchema) },
     system,
     messages: [{ role: 'user', content: user }]
@@ -119,7 +121,7 @@ async function callOllama({ system, user, zodSchema, model, env, fetchImpl, labe
 }
 
 export const PROVIDERS = {
-  anthropic: { label: 'Claude', keyEnv: ['ANTHROPIC_API_KEY', 'ANTHROPIC_AUTH_TOKEN'], defaultModel: 'claude-opus-5-5', call: callAnthropic },
+  anthropic: { label: 'Claude', keyEnv: ['ANTHROPIC_API_KEY', 'ANTHROPIC_AUTH_TOKEN'], defaultModel: 'claude-haiku-5-5', call: callAnthropic },
   openai: { label: 'OpenAI', keyEnv: ['OPENAI_API_KEY'], call: callOpenAI },
   gemini: { label: 'Gemini', keyEnv: ['GEMINI_API_KEY'], call: callGemini },
   ollama: { label: 'Ollama', keyEnv: [], call: callOllama }

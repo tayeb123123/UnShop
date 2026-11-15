@@ -23,7 +23,7 @@ It listens on `http://localhost:8787`. The extension's popup, settings page and 
 
 | `LLM_PROVIDER` | Needs | Notes |
 | --- | --- | --- |
-| `anthropic` (default) | `ANTHROPIC_API_KEY` | Claude Opus 5.5 by default; structured outputs + refusal fallback. Tested live. |
+| `anthropic` (default) | `ANTHROPIC_API_KEY` | Claude Haiku 5.5 by default (fast and cheap for this classification task); set `UNSHOP_MODEL=claude-opus-5-5` for the strongest judgment, which also enables server-side refusal fallback. Structured outputs. Tested live. |
 | `openai` | `OPENAI_API_KEY`, `UNSHOP_MODEL` | Strict JSON schema, falling back to JSON mode. Set `OPENAI_BASE_URL` for OpenRouter, Groq, Together, LM Studio, etc. (local servers need no key). |
 | `gemini` | `GEMINI_API_KEY`, `UNSHOP_MODEL` | JSON response mode; output validated against the schema. |
 | `ollama` | `UNSHOP_MODEL` (pulled locally) | No key, nothing leaves your machine. Small models are slower and less accurate; the first request also loads the model and can exceed the 55 s timeout. |
@@ -42,7 +42,7 @@ All providers get the same prompt and must return the same JSON shape; replies a
 | Server | `server/server.mjs`, `server/analyze.mjs`, `server/providers.mjs` | Validates requests with zod, calls the configured LLM provider, validates and clamps the response |
 | Pages | `src/demo.*`, `src/options.*`, `src/popup.*` | Fictional demo, settings (server URL, AI toggle, data deletion), toolbar popup |
 
-**AI call.** Each rejection or typed request sends: current preferences, the last 12 rejections (title, reason, note), the new feedback, and up to 40 visible products (ASIN, title, price). Claude (`claude-opus-5-5`, low effort, structured JSON output) returns updated preferences (budget, compact, must-have, avoid, notes), a better search query, a one-line summary, and a 0–100 fit score + reason for each product. Server-side refusal fallbacks are enabled (`fallbacks: "default"`). Product titles are treated as untrusted data in the system prompt; the server caps every field before returning. Override the model with `UNSHOP_MODEL`. Other providers receive the same prompt plus the JSON Schema (see `server/providers.mjs`).
+**AI call.** Each rejection or typed request sends: current preferences, the last 12 rejections (title, reason, note), the new feedback, and up to 40 visible products (ASIN, title, price). Claude (`claude-haiku-5-5` by default, low effort, structured JSON output) returns updated preferences (budget, compact, must-have, avoid, notes), a better search query, a one-line summary, and a 0–100 fit score + reason for each product. Server-side refusal fallbacks (`fallbacks: "default"`) are enabled on models that support them (Opus/Sonnet/Fable, not Haiku). Product titles are treated as untrusted data in the system prompt; the server caps every field before returning. Override the model with `UNSHOP_MODEL`. Other providers receive the same prompt plus the JSON Schema (see `server/providers.mjs`).
 
 **Scoring.** With a Claude score, fit = 75% Claude + 25% local rules (budget, size, avoid/must-have keyword hits), minus a penalty for hard conflicts. Without Claude, local rules alone. Unknown attributes are neutral.
 
