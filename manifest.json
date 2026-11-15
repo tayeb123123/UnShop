@@ -1,0 +1,17 @@
+{
+  "manifest_version": 3,
+  "name": "UnShop — find it by ruling things out",
+  "version": "0.3.0",
+  "description": "An unofficial Amazon search overlay that learns what you want from what you reject, with optional Claude interpretation.",
+  "permissions": ["storage"],
+  "host_permissions": ["http://localhost/*", "http://127.0.0.1/*"],
+  "background": { "service_worker": "src/background.js" },
+  "content_scripts": [{
+    "matches": ["https://*.amazon.com/s*", "https://*.amazon.com/*/s*"],
+    "js": ["src/model.runtime.js", "src/content.js"],
+    "css": ["src/styles.css"],
+    "run_at": "document_idle"
+  }],
+  "action": { "default_title": "UnShop", "default_popup": "src/popup.html" },
+  "options_page": "src/options.html"
+}

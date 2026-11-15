@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>UnShop · Settings</title><link rel="stylesheet" href="pages.css"></head>
+<body><main class="settings">
+  <a class="wordmark" href="demo.html"><span class="mk">u−</span>UnShop</a>
+  <h1>Settings</h1>
+  <p class="lede">UnShop learns what you want from what you reject on Amazon search pages. Claude interprets your feedback through a small server you run; without it, simple local rules still work.</p>
+
+  <section>
+    <div class="row"><h2>Claude interpretation</h2><span id="health" class="tag">Checking…</span></div>
+    <label class="switch"><input type="checkbox" id="aiEnabled"> <span>Send feedback and visible product titles/prices to my UnShop server for Claude to interpret</span></label>
+    <label for="serverUrl" class="field">Server URL</label>
+    <div class="inline"><input id="serverUrl" type="url" spellcheck="false" placeholder="http://localhost:8787"><button id="save" class="button">Save &amp; test</button></div>
+    <p class="muted">Start the server from the project folder:</p>
+    <pre>npm install
+ANTHROPIC_API_KEY=sk-ant-… npm run server</pre>
+    <p class="muted">Your API key stays in the server process — it is never stored in the extension. What gets sent: your typed requests, rejection reasons and notes, and the titles and prices of products visible on the page. No account data, reviews, or browsing history.</p>
+  </section>
+
+  <section>
+    <h2>Try it without Amazon</h2>
+    <p>A fictional product page that runs the exact same extension code with separate saved preferences.</p>
+    <a class="button" href="demo.html">Open demo →</a>
+  </section>
+
+  <section>
+    <h2>Your data</h2>
+    <p>Each Amazon search keeps its own preferences (the 30 most recent), stored in Chrome’s local extension storage on this device. A new search starts fresh; following UnShop’s refined-search link carries them over.</p>
+    <button id="reset" class="secondary">Delete saved preferences</button>
+    <p id="status" role="status" aria-live="polite"></p>
+  </section>
+  <p class="muted">Unofficial prototype, not affiliated with Amazon. Page layouts change; unknown product attributes are treated as unknown.</p>
+</main><script src="options.js"></script></body></html>
