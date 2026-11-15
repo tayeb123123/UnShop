@@ -61,14 +61,6 @@ PLAYWRIGHT_BROWSERS_PATH=work/browsers npm run test:browser
 
 Browser tests cover observer stability, click interception, local-mode reject/restore/undo/reset/persistence, Claude mode with a mocked response, recycled cards, collapse, storage failure, and a real unpacked MV3 load (demo, service worker, settings). The Claude call itself is not exercised by the automated tests; a real-key smoke test is manual.
 
-## Judge demo (90 seconds)
-
-1. Start the server, open the demo from the toolbar. Point out the **Claude** pill. All products are fictional.
-2. Hit **✕ Not for me** on "Studio One Large Over-Ear…", pick **Too bulky / large**, note "too heavy for my commute". Show Claude's summary, the learned chips, and the fit badges on every card.
-3. Type "under $80, nothing flashy" → Enter. Show the RGB/LED products drop, the shortlist reorder, and the refined Amazon search link.
-4. Remove a chip with ×, Undo, Restore a product. Refresh to show persistence.
-5. Optionally repeat on a live Amazon search.
-
 ## Limits and honesty
 
 Unofficial; not affiliated with Amazon. Reads only titles, ASINs, displayed USD prices and thumbnails already on the page; no reviews, account data or purchases. Live Amazon layouts vary by region and experiment — selector coverage is verified on fixtures, not guaranteed live. Preferences are device-local and saved per Amazon search query (`unshopQ:<query>`, 30 most recent kept): a new search starts blank, returning to a search (any page, any casing) restores them, and following UnShop's own refined-search link carries them to the new query (single-use, 30 minutes). Tabs don't sync live. Undo is one step. The server is meant to run on your own machine; for a hosted deployment add authentication and rate limits before exposing it. Review Amazon's conditions of use and Chrome Web Store policy before distributing.
