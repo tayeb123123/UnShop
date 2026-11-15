@@ -3,7 +3,7 @@
 <body><main class="settings">
   <a class="wordmark" href="demo.html"><span class="mk">u−</span>UnShop</a>
   <h1>Settings</h1>
-  <p class="lede">UnShop learns what you want from what you reject on Amazon search pages. An AI model (Claude by default, or OpenAI, Gemini, or a local Ollama model) interprets your feedback through a small server you run; without it, simple local rules still work.</p>
+  <p class="lede">UnShop learns what you want from what you reject on Amazon, eBay, Walmart, Target and Best Buy search pages. An AI model (Claude by default, or OpenAI, Gemini, or a local Ollama model) interprets your feedback through a small server you run; without it, simple local rules still work.</p>
 
   <section>
     <div class="row"><h2>AI interpretation</h2><span id="health" class="tag">Checking…</span></div>
@@ -18,16 +18,16 @@ npm run server</pre>
   </section>
 
   <section>
-    <h2>Try it without Amazon</h2>
+    <h2>Try it without a store</h2>
     <p>A fictional product page that runs the exact same extension code with separate saved preferences.</p>
     <a class="button" href="demo.html">Open demo →</a>
   </section>
 
   <section>
     <h2>Your data</h2>
-    <p>Each Amazon search keeps its own preferences (the 30 most recent), stored in Chrome’s local extension storage on this device. A new search starts fresh; following UnShop’s refined-search link carries them over.</p>
+    <p>Preferences are stored in Chrome’s local extension storage on this device. Each search on each store keeps its own (the 30 most recent; word order and plurals don’t matter), and a new search starts fresh. For a similar search, UnShop offers to reuse what you said, only if you agree. Following UnShop’s refined-search link carries them over.</p>
     <button id="reset" class="secondary">Delete saved preferences</button>
     <p id="status" role="status" aria-live="polite"></p>
   </section>
-  <p class="muted">Unofficial prototype, not affiliated with Amazon. Page layouts change; unknown product attributes are treated as unknown.</p>
+  <p class="muted">Unofficial prototype, not affiliated with Amazon, eBay, Walmart, Target or Best Buy. Page layouts change; unknown product attributes are treated as unknown.</p>
 </main><script src="options.js"></script></body></html>

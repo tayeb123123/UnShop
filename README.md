@@ -1,8 +1,10 @@
-# UnShop 0.3
+# UnShop 0.4
 
-People often recognise what they *don't* want before they can say what they do. UnShop is an unofficial Manifest V3 Chrome extension for Amazon.com search pages: hit **✕ Not for me** on results that miss, say why in a few words, and UnShop learns your preferences, re-scores the page, and suggests a better search.
+People often recognise what they *don't* want before they can say what they do. UnShop is an unofficial Manifest V3 Chrome extension for store search pages: hit **✕ Not for me** on results that miss, say why in a few words (or tell it what you want **more** or **less** of), and UnShop learns your preferences, re-scores the page, and suggests a better search.
 
-An LLM (via a small local server) interprets free-form feedback: Claude by default, or OpenAI / any OpenAI-compatible API, Gemini, or a local Ollama model. Without the server, deterministic local rules still handle budgets, size, and "no X / with X" phrases.
+**Stores:** Amazon, eBay, Walmart, Target, and Best Buy (experimental).
+
+An LLM (via a small local server) interprets free-form feedback: Claude by default, or OpenAI / any OpenAI-compatible API, Gemini, or a local Ollama model. Without the server, built-in rules still handle budgets, size, price and "more/less X" phrasing.
 
 ## Run it
 
@@ -30,12 +32,13 @@ It listens on `http://localhost:8787`. The extension's popup, settings page and 
 
 All providers get the same prompt and must return the same JSON shape; replies are validated and clamped server-side, and if a call fails the extension falls back to local rules. Only the Claude path has been tested against a live API; the others are covered by unit tests with mocked responses.
 
-**3. Try it** — click the toolbar icon → **Try the demo**, or open any `amazon.com/s?k=...` search.
+**3. Try it** — click the toolbar icon → **Try the demo**, or search on any supported store.
 
 ## How it works
 
 | Piece | File | Role |
 | --- | --- | --- |
+| Store adapters | `src/sites.js` | One small block per store: which URLs are search pages, the card selector, how to read ID/title/price/image, and how to build a search URL. Fix a broken store here. |
 | Content script | `src/content.js` | Finds result cards, injects the per-card badge + **Not for me** button, renders the Shadow-DOM side panel and rejection dialog |
 | Preference model | `src/model.runtime.js` | Shared by Chrome and Node tests: state normalisation, local inference, merging Claude results, scoring |
 | Background worker | `src/background.js` | The only part that calls the server (content scripts on amazon.com can't reliably reach localhost) |
@@ -45,6 +48,25 @@ All providers get the same prompt and must return the same JSON shape; replies a
 **AI call.** Each rejection or typed request sends: current preferences, the last 12 rejections (title, reason, note), the new feedback, and up to 40 visible products (ASIN, title, price). Claude (`claude-haiku-5-5` by default, low effort, structured JSON output) returns updated preferences (budget, compact, must-have, avoid, notes), a better search query, a one-line summary, and a 0–100 fit score + reason for each product. Server-side refusal fallbacks (`fallbacks: "default"`) are enabled on models that support them (Opus/Sonnet/Fable, not Haiku). Product titles are treated as untrusted data in the system prompt; the server caps every field before returning. Override the model with `UNSHOP_MODEL`. Other providers receive the same prompt plus the JSON Schema (see `server/providers.mjs`).
 
 **Scoring.** With a Claude score, fit = 75% Claude + 25% local rules (budget, size, avoid/must-have keyword hits), minus a penalty for hard conflicts. Without Claude, local rules alone. Unknown attributes are neutral.
+
+**Stores.** Selectors were checked against each store's live search page (Nov 2026):
+
+| Store | Search page | Live check |
+| --- | --- | --- |
+| Amazon | `amazon.com/s?k=…` | Real extension on a live page: 16/16 products with prices; dialog opens |
+| eBay | `ebay.com/sch/i.html?_nkw=…` | Adapter on a live page: 60/60 listings with title, price, image (eBay's "Shop on eBay" placeholder cards are skipped; price ranges use the lowest price) |
+| Walmart | `walmart.com/search?q=…` | Adapter on a live page: 75/75 with prices (both of Walmart's tile layouts) |
+| Target | `target.com/s?searchTerm=…` | Adapter on a live page: 30/30; 2 had no listed price ("See price in cart") and are treated as unknown |
+| Best Buy | `bestbuy.com/site/searchpage.jsp?st=…` | **Experimental.** Only part of the page rendered in our test browser and no prices loaded; titles read correctly |
+
+Walmart and Target change results without reloading the page; UnShop follows the URL, swaps to the right search's preferences, and hides itself on non-search pages. Store layouts change without notice and headless browsers are often blocked by the stores' bot protection, so live compatibility needs periodic manual checks.
+
+**Similar searches.** Preferences are saved per store and per search, under a canonical form of the query: lowercase, filler words removed, plurals singularised, words sorted. So "Wireless Headphones", "headphones wireless" and "wireless headphone" are the same search and load automatically. Anything else starts blank, because context differs. When a *related* search already has preferences, UnShop **offers** them ("You told me what you like for “wireless headphones” on Amazon. Use those preferences here?") and only applies them if you agree:
+
+- Related means the same main product noun (the last word before "for/with/under…"): "bluetooth headphones" ≈ "wireless headphones", "shoes for running" ≈ "running shoes". Sharing words around a different noun doesn't count: "camera" ≠ "camera bag", "iphone 15" ≠ "iphone 15 case".
+- Works across stores (Amazon → eBay), since what you said about headphones still applies.
+- Only stated preferences carry over (budget, size, cheaper/higher-end, features, avoids). Rejections and fit scores belong to specific products on another page and stay behind.
+- "Start fresh" is remembered for that search.
 
 **Why the button didn't work before.** Amazon attaches its own click/mousedown handlers to result cards, and 0.2 appended its toolbar at the bottom of each card where Amazon's layout could clip it. 0.3 positions the controls over the top of each card and handles clicks in the window *capture* phase — the first listener to run — so the page can't swallow them. A browser test simulates a page that swallows all clicks.
 
@@ -59,8 +81,8 @@ PLAYWRIGHT_BROWSERS_PATH=work/browsers npx playwright install chromium
 PLAYWRIGHT_BROWSERS_PATH=work/browsers npm run test:browser
 ```
 
-Browser tests cover observer stability, click interception, local-mode reject/restore/undo/reset/persistence, Claude mode with a mocked response, recycled cards, collapse, storage failure, and a real unpacked MV3 load (demo, service worker, settings). The Claude call itself is not exercised by the automated tests; a real-key smoke test is manual.
+Browser tests cover every store adapter (fixtures copied from live markup), similar-search offers across stores, single-page search changes, observer stability, click interception, local-mode reject/restore/undo/reset/persistence, Claude mode with a mocked response, recycled cards, collapse, storage failure, and a real unpacked MV3 load (demo, service worker, settings). The Claude call itself is not exercised by the automated tests; a real-key smoke test is manual.
 
 ## Limits and honesty
 
-Unofficial; not affiliated with Amazon. Reads only titles, ASINs, displayed USD prices and thumbnails already on the page; no reviews, account data or purchases. Live Amazon layouts vary by region and experiment — selector coverage is verified on fixtures, not guaranteed live. Preferences are device-local and saved per Amazon search query (`unshopQ:<query>`, 30 most recent kept): a new search starts blank, returning to a search (any page, any casing) restores them, and following UnShop's own refined-search link carries them to the new query (single-use, 30 minutes). Tabs don't sync live. Undo is one step. The server is meant to run on your own machine; for a hosted deployment add authentication and rate limits before exposing it. Review Amazon's conditions of use and Chrome Web Store policy before distributing.
+Unofficial; not affiliated with Amazon, eBay, Walmart, Target or Best Buy. Reads only titles, product IDs, displayed USD prices and thumbnails already on the page; no reviews, account data or purchases. Store layouts vary by region and experiment; selectors were checked live once (see the table above) and are covered by fixtures, but aren't guaranteed to keep working. Preferences are device-local and saved per store and canonical search (`unshopQ:<store>:<query>`, 30 most recent kept); following UnShop's own refined-search link carries them to the new query (single-use, 30 minutes). Tabs don't sync live. Undo is one step. The server is meant to run on your own machine; for a hosted deployment add authentication and rate limits before exposing it. Review each store's conditions of use and Chrome Web Store policy before distributing.

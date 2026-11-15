@@ -9,12 +9,25 @@ const card = (id = 'TEST000001', title = 'Large over-ear headphones', price = '$
 // ai: 'offline' | 'online'. In online mode analyze returns a canned Claude-shaped result.
 async function inject(page) {
   await page.addScriptTag({ path: path.join(repo, 'src/model.runtime.js') });
+  await page.addScriptTag({ path: path.join(repo, 'src/sites.js') });
   await page.addScriptTag({ path: path.join(repo, 'src/content.js') });
   await page.addStyleTag({ path: path.join(repo, 'src/styles.css') });
 }
 
-async function fixture(page, { html = card(), ai = 'offline', pageScript = '', url = 'https://www.amazon.com/s?k=headphones' } = {}) {
-  await page.route('https://www.amazon.com/**', route => route.fulfill({ contentType: 'text/html', body: `<html><body><main>${html}</main><div id="unrelated"></div><script>${pageScript}</script></body></html>` }));
+// Fake store pages for every supported site. `page.__html` is what the next navigation serves.
+// Storage is one object shared across sites (like chrome.storage), held here in Node.
+async function fixture(page, { html = card(), ai = 'offline', pageScript = '', url = 'https://www.amazon.com/s?k=headphones', expectCards = true } = {}) {
+  page.__html = html; page.__script = pageScript;
+  const store = page.__store || (page.__store = {});
+  if (!page.__bound) {
+    page.__bound = true;
+    await page.route(/^https:\/\/www\.(amazon|ebay|walmart|target|bestbuy)\.com\//, route => route.fulfill({ contentType: 'text/html', body: `<html><body><main>${page.__html}</main><div id="unrelated"></div><script>${page.__script}</script></body></html>` }));
+    await page.exposeBinding('__store', (_src, op, arg) => {
+      if (op === 'set') Object.assign(store, JSON.parse(JSON.stringify(arg)));
+      if (op === 'remove') for (const k of [].concat(arg)) delete store[k];
+      return JSON.parse(JSON.stringify(store));
+    });
+  }
   await page.addInitScript(mode => {
     window.__aiCalls = [];
     window.chrome = { runtime: {
@@ -29,14 +42,20 @@ async function fixture(page, { html = card(), ai = 'offline', pageScript = '', u
         }, 10);
       }
     }, storage: { local: {
-      get(key, callback) { callback(JSON.parse(localStorage.getItem('test-storage') || '{}')); },
-      remove(keys, callback) { const all = JSON.parse(localStorage.getItem('test-storage') || '{}'); for (const k of [].concat(keys)) delete all[k]; localStorage.setItem('test-storage', JSON.stringify(all)); callback?.(); },
-      set(value, callback) { localStorage.setItem('test-storage', JSON.stringify({ ...JSON.parse(localStorage.getItem('test-storage') || '{}'), ...value })); callback(); }
+      get(key, callback) { window.__store('get').then(all => callback(all)); },
+      remove(keys, callback) { window.__store('remove', keys).then(() => callback?.()); },
+      set(value, callback) { window.__store('set', value).then(() => callback()); }
     } } };
   }, ai);
   await page.goto(url);
   await inject(page);
-  await expect(page.locator('.unshop-ui').first()).toBeAttached();
+  if (expectCards) await expect(page.locator('.unshop-ui').first()).toBeAttached();
+  return store;
+}
+// Navigate to another fake store page in the same test (shared storage).
+async function visit(page, url, html = page.__html) {
+  page.__html = html;
+  await page.goto(url); await inject(page);
 }
 
 test('idle observer settles, unrelated changes do not scan, burst inserts are batched', async ({ page }) => {
@@ -73,7 +92,7 @@ test('local mode: reject, restore, undo, reset and persistence', async ({ page }
   await expect(page.locator('article')).toHaveClass(/unshop-dimmed/);
   await expect(page.locator('.unshop-badge')).toHaveText('You passed on: Large over-ear headphones');
   await expect(page.locator('article h2')).toBeHidden();
-  const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('test-storage'))['unshopQ:headphones']);
+  const saved = page.__store['unshopQ:amazon:headphone'];
   expect(saved.rejected.TEST000001.title).toBe('Large over-ear headphones');
   expect(saved.events[0].note).toBe('Too heavy for commuting');
   expect(saved.compact).toBe(true); expect(saved.avoid).toContain('heavy');
@@ -83,8 +102,7 @@ test('local mode: reject, restore, undo, reset and persistence', async ({ page }
   await page.locator('.unshop-reject').click();
   await page.getByRole('button', { name: 'Hide & learn' }).click();
   await page.reload();
-  await page.addScriptTag({ path: path.join(repo, 'src/model.runtime.js') });
-  await page.addScriptTag({ path: path.join(repo, 'src/content.js') });
+  await inject(page);
   await expect(page.locator('article')).toHaveClass(/unshop-dimmed/);
   await page.locator('.unshop-reject').click();
   await expect(page.locator('article')).not.toHaveClass(/unshop-dimmed/);
@@ -162,9 +180,7 @@ test('Hide poor fits removes low scorers reversibly; Claude only gets plausible 
   expect(await page.locator('article:visible').count()).toBeLessThan(visible);
   await expect(page.locator('article[data-asin="P03"]')).toBeVisible();
   await page.reload();
-  await page.addScriptTag({ path: path.join(repo, 'src/model.runtime.js') });
-  await page.addScriptTag({ path: path.join(repo, 'src/content.js') });
-  await page.addStyleTag({ path: path.join(repo, 'src/styles.css') });
+  await inject(page);
   await expect(page.locator('#unshop-root #hidePoor')).toBeChecked();
   await page.locator('#unshop-root .hp').click();
   await expect(page.locator('article:visible')).toHaveCount(24);
@@ -172,13 +188,13 @@ test('Hide poor fits removes low scorers reversibly; Claude only gets plausible 
 
 test('preferences are saved per search; a new search starts blank; refined link carries them over', async ({ page }) => {
   await fixture(page);
-  await expect(page.locator('#unshop-root .scope')).toHaveText('Preferences for “headphones”');
+  await expect(page.locator('#unshop-root .scope')).toHaveText('Preferences for “headphones” on Amazon');
   await page.getByLabel('More of').fill('under $60, no over-ear, with noise cancelling');
   await page.getByRole('button', { name: 'Refine' }).click();
   await expect(page.locator('#unshop-root .prefs')).toContainText('Under $60');
   // A different Amazon search: no preferences.
   await page.goto('https://www.amazon.com/s?k=bluetooth+speaker'); await inject(page);
-  await expect(page.locator('#unshop-root .scope')).toHaveText('Preferences for “bluetooth speaker”');
+  await expect(page.locator('#unshop-root .scope')).toHaveText('Preferences for “bluetooth speaker” on Amazon');
   await expect(page.locator('#unshop-root .prefs')).toContainText('Nothing yet');
   await expect(page.locator('.unshop-badge')).toBeHidden();
   // Same search again (page 2, different case): preferences return.
@@ -187,7 +203,7 @@ test('preferences are saved per search; a new search starts blank; refined link 
   // Following UnShop's refined search link hands them to the new query.
   const href = await page.locator('#unshop-root #search').getAttribute('href');
   await page.locator('#unshop-root #search').evaluate(a => a.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true })) || true);
-  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('test-storage')).unshopHandoff?.query)).toBe('Headphones');
+  await expect.poll(() => page.__store.unshopHandoff?.query).toBe('Headphones');
   await page.goto(href); await inject(page);
   await expect(page.locator('#unshop-root .prefs')).toContainText('Under $60');
   await expect(page.locator('#unshop-root .bubble')).toContainText('Carried over');
@@ -209,6 +225,97 @@ test('More/Less boxes understand casual sentences without Claude', async ({ page
   await expect(page.locator('#unshop-root .ranked .t').first()).toHaveText('Mini Digital Camera for Kids');
   await page.locator('#unshop-root .chip', { hasText: '− Flashy' }).click();
   await expect(page.getByLabel('Less of')).toHaveValue('flashy');
+});
+
+// Markup copied (trimmed) from each store's live search page, Nov 2026.
+const STORES = {
+  ebay: { url: 'https://www.ebay.com/sch/i.html?_nkw=wireless+headphones', label: 'eBay', link: /ebay\.com\/sch\/i\.html\?_nkw=.*&_udhi=50/, html: `<ul>
+    <li class="s-card" data-listingid="2500219655424533"><div class="s-card__title"><span>Shop on eBay</span></div><span class="s-card__price">$20.00</span></li>
+    <li class="s-card" data-listingid="395390195043"><div class="su-media-container"><img src="https://i.ebayimg.com/a.webp"></div><div class="s-card__title"><span class="su-styled-text">Jabra Elite 65t True Wireless Earbud Headphones</span><span class="clipped">Opens in a new window or tab</span></div><span class="s-card__price">$19.99</span> to <span class="s-card__price">$24.99</span></li>
+    <li class="s-card" data-listingid="395388332344"><div class="s-card__title"><span class="su-styled-text">Big Studio Over-Ear Headphones</span></div><span class="s-card__price">$1,249.00</span></li></ul>`,
+    expect: { count: 2, titles: ['Jabra Elite 65t True Wireless Earbud Headphones', 'Big Studio Over-Ear Headphones'], prices: ['$19.99', '$1249.00'] } },
+  walmart: { url: 'https://www.walmart.com/search?q=wireless+headphones', label: 'Walmart', link: /walmart\.com\/search\?q=.*&max_price=50/, html: `
+    <div data-item-id="5530776824"><img data-testid="productTileImage" src="https://i5.walmartimages.com/a.jpg"><span data-automation-id="product-title">Skullcandy Crusher XT Wireless Foldable over-Ear Headphones</span><div data-automation-id="product-price"><div aria-hidden="true"><span>Now</span><span>$</span><span>79</span><span>00</span></div><span>current price Now $79.00, Was $100.00</span></div></div>
+    <div data-item-id="1006012037"><h3 data-automation-id="product-title">onn. Wireless Earbuds</h3><div><span class="ld_Ec">Price Now $14.88 Was $20.00 Options from $14.88 – $19.58</span><span>$</span><span>14</span></div></div>`,
+    expect: { count: 2, titles: ['Skullcandy Crusher XT Wireless Foldable over-Ear Headphones', 'onn. Wireless Earbuds'], prices: ['$79.00', '$14.88'] } },
+  target: { url: 'https://www.target.com/s?searchTerm=wireless+headphones', label: 'Target', link: /target\.com\/s\?searchTerm=/, html: `
+    <div data-test="ListingPageProductListing" data-focusid="91938794_product_card"><a data-test="product-listing-gallery-desktop-image-link" aria-label="Shokz OpenRun Bluetooth Wireless Headphones Sponsored" href="/p/x/-/A-92750139"><img src="https://target.scene7.com/a"></a><div data-test="text-quill"><span data-test="text-quill-insert-0">$129.99</span></div></div>
+    <div data-test="ListingPageProductListing" data-focusid="94779264_product_card"><a data-test="product-listing-gallery-desktop-image-link" aria-label="JLab Go Pods ANC True Wireless Earbuds" href="/p/y/-/A-94779264"></a><div><span>$24.99 - $26.99</span></div></div>`,
+    expect: { count: 2, titles: ['Shokz OpenRun Bluetooth Wireless Headphones', 'JLab Go Pods ANC True Wireless Earbuds'], prices: ['$129.99', '$24.99'] } },
+  bestbuy: { url: 'https://www.bestbuy.com/site/searchpage.jsp?st=wireless+headphones', label: 'Best Buy', link: /bestbuy\.com\/site\/searchpage\.jsp\?st=/, html: `<ul>
+    <li class="product-list-item grid-view" data-product-id="6505727"><a class="product-list-item-link" href="/site/a">Sony - WH-1000XM5 Wireless Noise Cancelling Over-the-Ear Headphones - Black</a></li>
+    <li class="product-list-item grid-view" data-product-id="13051189"></li></ul>`,
+    expect: { count: 1, titles: ['Sony - WH-1000XM5 Wireless Noise Cancelling Over-the-Ear Headphones - Black'], prices: ['Price n/a'] } }
+};
+for (const [id, store] of Object.entries(STORES)) {
+  test(`${store.label}: reads real-style cards, prices, and builds its own search link`, async ({ page }) => {
+    await fixture(page, { url: store.url, html: store.html });
+    await expect(page.locator('.unshop-ui')).toHaveCount(store.expect.count);
+    for (const t of store.expect.titles) await expect(page.locator(`.unshop-reject[aria-label="Not for me: ${t}"]`)).toHaveCount(1);
+    await expect(page.locator('#unshop-root .scope')).toHaveText(`Preferences for “wireless headphones” on ${store.label}`);
+    const prices = await page.locator('#unshop-root .ranked .price').allTextContents();
+    expect(prices.sort()).toEqual([...store.expect.prices].sort());
+    await page.getByLabel('More of').fill('under $50');
+    await page.keyboard.press('Enter');
+    await expect(page.locator('#unshop-root #search')).toHaveAttribute('href', store.link);
+    await expect(page.locator('#unshop-root #search')).toContainText(`${store.label} ↗`);
+    await page.locator('.unshop-reject').first().click();
+    await page.getByRole('button', { name: 'Hide & learn' }).click();
+    await expect(page.locator('.unshop-dimmed')).toHaveCount(1);
+    expect(page.__store[`unshopQ:${id}:headphone wireless`].site).toBe(id);
+  });
+}
+
+test('similar searches: offered across stores, never forced; unrelated searches stay blank', async ({ page }) => {
+  await fixture(page, { url: 'https://www.amazon.com/s?k=wireless+headphones' });
+  await expect(page.locator('#unshop-root .suggest')).toBeHidden();
+  await page.getByLabel('More of').fill('under $60, noise cancelling');
+  await page.keyboard.press('Enter');
+  await expect(page.locator('#unshop-root .prefs')).toContainText('Under $60');
+  // Same product noun on another store → offered, not applied.
+  await visit(page, STORES.ebay.url.replace('wireless', 'bluetooth'), STORES.ebay.html);
+  await expect(page.locator('#unshop-root .suggest')).toContainText('“wireless headphones” on Amazon');
+  await expect(page.locator('#unshop-root .prefs')).toContainText('Nothing yet');
+  await page.getByRole('button', { name: 'Use them' }).click();
+  await expect(page.locator('#unshop-root .prefs')).toContainText('Under $60');
+  await expect(page.locator('#unshop-root .prefs')).toContainText('+ noise cancelling');
+  await expect(page.locator('#unshop-root .bubble')).toContainText('Using what you told me for “wireless headphones”');
+  await expect(page.locator('#unshop-root .suggest')).toBeHidden();
+  // Different product that shares a word → not offered.
+  await visit(page, 'https://www.ebay.com/sch/i.html?_nkw=headphone+case', STORES.ebay.html);
+  await expect(page.locator('#unshop-root .scope')).toContainText('headphone case');
+  await expect(page.locator('#unshop-root .suggest')).toBeHidden();
+  // Same search, different word order and plural → it's the same search: loads directly, no prompt.
+  await visit(page, 'https://www.amazon.com/s?k=Headphone+Wireless', card());
+  await expect(page.locator('#unshop-root .prefs')).toContainText('Under $60');
+  await expect(page.locator('#unshop-root .suggest')).toBeHidden();
+  // "Start fresh" is remembered for that search.
+  await visit(page, STORES.walmart.url.replace('wireless+', ''), STORES.walmart.html);
+  await expect(page.locator('#unshop-root .suggest')).toBeVisible();
+  await page.getByRole('button', { name: 'Start fresh' }).click();
+  await expect(page.locator('#unshop-root .suggest')).toBeHidden();
+  await visit(page, STORES.walmart.url.replace('wireless+', ''), STORES.walmart.html);
+  await expect(page.locator('#unshop-root .scope')).toContainText('“headphones” on Walmart');
+  await expect(page.locator('#unshop-root .suggest')).toBeHidden();
+  await expect(page.locator('#unshop-root .prefs')).toContainText('Nothing yet');
+});
+
+test('single-page stores: switching search in place swaps preferences; leaving search hides UnShop', async ({ page }) => {
+  await fixture(page, { url: STORES.walmart.url, html: STORES.walmart.html });
+  await page.getByLabel('More of').fill('metal');
+  await page.keyboard.press('Enter');
+  await expect(page.locator('#unshop-root .prefs')).toContainText('+ metal');
+  await page.evaluate(() => history.pushState({}, '', '/search?q=desk+lamp'));
+  await expect(page.locator('#unshop-root .scope')).toHaveText('Preferences for “desk lamp” on Walmart');
+  await expect(page.locator('#unshop-root .prefs')).toContainText('Nothing yet');
+  await page.evaluate(() => history.pushState({}, '', '/search?q=wireless+headphones'));
+  await expect(page.locator('#unshop-root .prefs')).toContainText('+ metal');
+  await page.evaluate(() => history.pushState({}, '', '/ip/5530776824'));
+  await expect(page.locator('#unshop-root')).toBeHidden();
+  await expect(page.locator('.unshop-ui')).toHaveCount(0);
+  await page.evaluate(() => history.pushState({}, '', '/search?q=wireless+headphones'));
+  await expect(page.locator('#unshop-root')).toBeVisible();
+  await expect(page.locator('.unshop-ui')).toHaveCount(2);
 });
 
 test('collapse to launcher and back', async ({ page }) => {

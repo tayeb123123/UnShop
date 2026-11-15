@@ -208,19 +208,75 @@ globalThis.UnShopModel = (() => {
     for (const t of state.mustHave.slice(0, 2)) if (!result.toLowerCase().includes(t)) result += ` ${t}`;
     return result.trim();
   }
-  // Preferences are saved per Amazon search: one storage key per normalised query.
+  /* ---------- Search identity ----------
+     Preferences are saved per store + search. Searches are compared by their canonical form,
+     so "Wireless Headphones", "headphones wireless" and "wireless headphone" are the same search. */
   const SEARCH_PREFIX = 'unshopQ:';
   const normQuery = q => (typeof q === 'string' ? q : '').toLowerCase().replace(/\s+/g, ' ').trim().slice(0, 120);
-  function searchKey(href) {
-    const url = new URL(href);
-    const k = normQuery(url.searchParams.get('k'));
-    if (k) return SEARCH_PREFIX + k;
-    // Category/browse pages without a typed query: key by department + non-price filters.
-    const rh = (url.searchParams.get('rh') || '').split(',').filter(f => !f.startsWith('p_36:')).join(',');
-    return `${SEARCH_PREFIX}browse:${(url.searchParams.get('i') || '')}|${rh}`.slice(0, 160);
+  const QUERY_STOP = new Set(['a', 'an', 'the', 'for', 'with', 'and', 'or', 'of', 'in', 'on', 'to', 'my', 'me', 'by', 'from', 'w', 'buy', 'shop', 'sale', 'best', 'top', 'new']);
+  function singular(w) {
+    if (w.length <= 3 || /(ss|us|is)$/.test(w)) return w;
+    if (/ies$/.test(w)) return `${w.slice(0, -3)}y`;
+    if (/(ches|shes|xes|zes|sses)$/.test(w)) return w.slice(0, -2);
+    return w.endsWith('s') ? w.slice(0, -1) : w;
+  }
+  function queryTokens(q) {
+    return [...new Set(normQuery(q).replace(/['’]/g, '').split(/[^a-z0-9]+/).filter(w => w && !QUERY_STOP.has(w)).map(singular))].sort();
+  }
+  const canonicalQuery = q => queryTokens(q).join(' ').slice(0, 120);
+  function searchKey(siteId, query, fallback = '') {
+    const c = canonicalQuery(query);
+    return `${SEARCH_PREFIX}${siteId}:${c || `browse:${String(fallback).slice(0, 100)}`}`;
+  }
+  const legacySearchKey = query => (normQuery(query) ? SEARCH_PREFIX + normQuery(query) : null);  // pre-multi-store Amazon keys
+  // Overlap of two searches' words (Jaccard). 1 = same words, 0 = nothing shared.
+  function querySimilarity(a, b) {
+    const A = new Set(queryTokens(a)), B = new Set(queryTokens(b));
+    if (!A.size || !B.size) return 0;
+    let shared = 0; for (const w of A) if (B.has(w)) shared++;
+    return shared / (A.size + B.size - shared);
+  }
+  // The thing being bought: last word before any "for/with/under…" clause.
+  // "wireless headphones" → headphone, "camera bag" → bag, "shoes for running" → shoe.
+  function headNoun(q) {
+    const main = normQuery(q).split(/\b(?:for|with|without|under|below|from|by|in|on|that|to)\b/)[0];
+    const words = main.replace(/['’]/g, '').split(/[^a-z0-9]+/).filter(w => w && !QUERY_STOP.has(w) && !/^\d+$/.test(w));
+    return words.length ? singular(words[words.length - 1]) : '';
+  }
+  // How related two searches are, 0–1. Same product noun counts most ("bluetooth headphones" ≈
+  // "wireless headphones"); sharing words around a different noun doesn't ("camera" ≠ "camera bag").
+  function relatedness(a, b) {
+    const overlap = querySimilarity(a, b), ha = headNoun(a), hb = headNoun(b);
+    if (!ha || !hb) return overlap;         // no clear noun (e.g. only a model number): fall back to word overlap
+    return ha === hb ? 0.5 + overlap / 2 : 0;
+  }
+  // Pick the most similar saved search that actually has preferences. Exact same search on the
+  // same store is excluded (that one loads automatically). Everything else needs the shopper's OK.
+  function findSimilar(query, currentKey, saved, threshold = 0.5) {
+    let best = null;
+    for (const [k, raw] of Object.entries(saved || {})) {
+      if (!k.startsWith(SEARCH_PREFIX) || k === currentKey || !raw?.queryText) continue;
+      const st = normalizeState(raw);
+      if (!(st.budget || st.compact || st.priceTilt || st.mustHave.length || st.avoid.length)) continue;
+      const score = relatedness(query, raw.queryText);
+      if (score < threshold) continue;
+      const cand = { key: k, score, queryText: String(raw.queryText).slice(0, 80), site: String(raw.site || ''), savedAt: Number(raw.savedAt) || 0, state: st };
+      if (!best || cand.score > best.score || (cand.score === best.score && cand.savedAt > best.savedAt)) best = cand;
+    }
+    return best;
+  }
+  // Bring over what the shopper *said* (budget, size, price, features). Rejections and scores are
+  // tied to specific products on another page, so they stay behind.
+  function importPreferences(state, from, summary = '') {
+    const next = normalizeState(state), src = normalizeState(from);
+    for (const k of ['budget', 'compact', 'priceTilt', 'notes']) next[k] = src[k];
+    next.mustHave = [...new Set([...next.mustHave, ...src.mustHave])];
+    next.avoid = [...new Set([...next.avoid, ...src.avoid])].filter(t => !next.mustHave.includes(t));
+    next.scores = {}; next.query = ''; next.summary = clean(summary, 400);
+    return normalizeState(next);
   }
   function hasPreferences(state) {
     return Boolean(state.budget || state.compact || state.priceTilt || state.mustHave.length || state.avoid.length || Object.keys(state.rejected).length);
   }
-  return { SEARCH_PREFIX, searchKey, normQuery, REASONS, emptyState, normalizeState, updatePreferences, restoreProduct, refinePreferences, refineMoreLess, parseFeedback, applyAnalysis, removePreference, evaluate, scoreProduct, explain, refineQuery, hasPreferences };
+  return { SEARCH_PREFIX, searchKey, legacySearchKey, normQuery, canonicalQuery, queryTokens, querySimilarity, headNoun, relatedness, findSimilar, importPreferences, REASONS, emptyState, normalizeState, updatePreferences, restoreProduct, refinePreferences, refineMoreLess, parseFeedback, applyAnalysis, removePreference, evaluate, scoreProduct, explain, refineQuery, hasPreferences };
 })();

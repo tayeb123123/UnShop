@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { refineMoreLess, searchKey, emptyState, normalizeState, updatePreferences, restoreProduct, refinePreferences, applyAnalysis, removePreference, evaluate, refineQuery } from '../src/model.js';
+import { refineMoreLess, searchKey, relatedness, findSimilar, importPreferences, emptyState, normalizeState, updatePreferences, restoreProduct, refinePreferences, applyAnalysis, removePreference, evaluate, refineQuery } from '../src/model.js';
 
 test('legacy or malformed storage becomes safe structured state', () => {
   const state = normalizeState({ rejected: { A: { title: 'Legacy', reason: 'too-large' }, B: null, C: { reason: 'made-up' } }, budget: 'NaN', events: 'broken', mustHave: 'x', scores: { A: { fit: 'no' } } });
@@ -76,11 +76,33 @@ test('feedback and rejection history stay bounded', () => {
   for (let i = 0; i < 350; i++) state = updatePreferences(state, { id: `P${i}`, title: 'Product' }, 'other', 'x'.repeat(2000));
   assert.equal(Object.keys(state.rejected).length, 300); assert.equal(state.events.length, 100); assert.equal(state.events.at(-1).note.length, 500);
 });
-test('each search gets its own storage key; budget filter and casing do not split it', () => {
-  assert.equal(searchKey('https://www.amazon.com/s?k=Wireless++Headphones&page=2'), 'unshopQ:wireless headphones');
-  assert.equal(searchKey('https://www.amazon.com/s?k=wireless%20headphones&rh=p_36%3A-8000'), 'unshopQ:wireless headphones');
-  assert.notEqual(searchKey('https://www.amazon.com/s?k=speakers'), searchKey('https://www.amazon.com/s?k=headphones'));
-  assert.equal(searchKey('https://www.amazon.com/s?i=electronics&rh=n%3A172541%2Cp_36%3A-5000'), 'unshopQ:browse:electronics|n:172541');
+test('search keys: per store, word order/plurals/case ignored', () => {
+  assert.equal(searchKey('amazon', 'Wireless  Headphones'), 'unshopQ:amazon:headphone wireless');
+  assert.equal(searchKey('amazon', 'headphone wireless'), searchKey('amazon', 'wireless headphones'));
+  assert.notEqual(searchKey('ebay', 'wireless headphones'), searchKey('amazon', 'wireless headphones'));
+  assert.equal(searchKey('amazon', 'shoes for running'), searchKey('amazon', 'running shoes'));
+  assert.equal(searchKey('walmart', '', '?cat_id=123'), 'unshopQ:walmart:browse:?cat_id=123');
+});
+test('related searches: same product noun counts; accessories and other products do not', () => {
+  const related = [['wireless headphones', 'bluetooth headphones'], ['camera', 'digital camera'], ['running shoes', 'shoes for running'], ['headphones', 'noise cancelling headphones']];
+  const unrelated = [['camera', 'camera bag'], ['iphone 15 case', 'iphone 15'], ['wireless headphones', 'wireless earbuds'], ['laptop stand', 'laptop'], ['running shoes', 'running shorts']];
+  for (const [a, b] of related) assert.ok(relatedness(a, b) >= 0.5, `${a} ~ ${b}`);
+  for (const [a, b] of unrelated) assert.ok(relatedness(a, b) < 0.5, `${a} !~ ${b}`);
+});
+test('findSimilar offers the best saved search with preferences; import keeps rejections behind', () => {
+  const withPrefs = { ...updatePreferences(emptyState(), { id: 'R1', title: 'Big', price: 300 }, 'too-expensive'), mustHave: ['foldable'], queryText: 'wireless headphones', site: 'amazon', savedAt: 2 };
+  const saved = {
+    'unshopQ:amazon:headphone wireless': withPrefs,
+    'unshopQ:ebay:bag camera': { ...withPrefs, queryText: 'camera bag', site: 'ebay', savedAt: 3 },
+    'unshopQ:target:headphone': { ...emptyState(), queryText: 'headphones', site: 'target', savedAt: 4 },  // nothing learned: never offered
+    unshopUi: { collapsed: false }
+  };
+  const match = findSimilar('bluetooth headphones', 'unshopQ:ebay:bluetooth headphone', saved);
+  assert.equal(match.key, 'unshopQ:amazon:headphone wireless'); assert.equal(match.site, 'amazon');
+  assert.equal(findSimilar('camera', 'unshopQ:ebay:camera', saved), null);
+  const imported = importPreferences(emptyState(), match.state, 'Using…');
+  assert.equal(imported.budget, 255); assert.deepEqual(imported.mustHave, ['foldable']);
+  assert.deepEqual(imported.rejected, {}); assert.deepEqual(imported.scores, {});
 });
 test('reserved identifiers cannot alter the state prototype', () => {
   const raw = JSON.parse('{"rejected":{"__proto__":{"reason":"other"},"constructor":{"reason":"other"}}}');

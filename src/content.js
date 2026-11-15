@@ -1,13 +1,17 @@
 (() => {
   'use strict';
   if (globalThis.__unshop) return;
-  const demo = document.body.dataset.unshopDemo === 'true' && location.protocol === 'chrome-extension:';
-  if (!demo && (!/(^|\.)amazon\.com$/.test(location.hostname) || !/^\/(?:[^/]+\/)?s\/?$/.test(location.pathname))) return;
-  const M = globalThis.UnShopModel;
-  // Each Amazon search gets its own saved preferences; a new search starts blank.
-  const key = demo ? 'unshopDemoState' : M.searchKey(location.href);
+  const M = globalThis.UnShopModel, S = globalThis.UnShopSites;
+  // Which store is this? Everything store-specific (selectors, prices, search URLs) is in sites.js.
+  const site = S.detect(location, document);
+  if (!site) return;
+  const demo = site.id === 'demo';
+  // Each store + search gets its own saved preferences; a new search starts blank.
+  // `key` changes when a store swaps results without reloading (Walmart/Target are single-page apps).
+  const keyFor = href => demo ? 'unshopDemoState' : M.searchKey(site.id, S.query(site, href), new URL(href).search);
+  let key = keyFor(location.href), activeHref = location.href;
   const HANDOFF_MS = 30 * 60 * 1000, MAX_SEARCHES = 30;
-  const selector = '[data-component-type="s-search-result"][data-asin]';
+  const selector = site.card;
   const cards = new Map();
   const uiToCard = new WeakMap();
   const diagnostics = globalThis.__unshop = { scans: 0, mutations: 0, cards: 0, aiCalls: 0 };
@@ -37,6 +41,7 @@ header{display:flex;align-items:center;gap:10px;padding:14px 14px 12px 16px;bord
 .icon{border:0;background:transparent;width:30px;height:30px;border-radius:8px;display:grid;place-items:center;color:var(--ink2);font-size:18px;line-height:1}.icon:hover{background:var(--soft)}
 .scroll{overflow:auto;padding:14px 16px 4px}
 .bubble{background:var(--soft);border-radius:4px 14px 14px 14px;padding:10px 12px;font-size:13px;color:var(--ink2);margin-bottom:12px}
+.suggest{border:1px solid #c9f16b;background:#f7fde9;border-radius:14px;padding:10px 12px;margin-bottom:10px;font-size:12.5px;color:var(--ink2)}.suggest p{margin:0 0 8px}.suggest b{color:var(--ink)}.suggest-row{display:flex;gap:6px}
 .bubble b{color:var(--ink)}.bubble.err{background:var(--amber2);color:#6b4a07}
 .bubble.wait{background:linear-gradient(90deg,var(--soft),#e9fbc4,var(--soft));background-size:200% 100%;animation:shimmer 1.4s linear infinite;color:var(--ink)}
 @keyframes shimmer{to{background-position:-200% 0}}
@@ -116,6 +121,7 @@ fieldset{border:0;padding:0;margin:0}legend{font-size:12px;font-weight:650;color
     <span class="pill" data-s="checking" role="status"><span class="dot"></span><span class="pl">Checking AI…</span></span>
     <button class="icon collapse" type="button" aria-label="Minimize UnShop" title="Minimize">–</button></header>
   <div class="scroll">
+    <div class="suggest hidden" role="group" aria-label="Preferences from a similar search"><p></p><div class="suggest-row"><button class="go" id="useSimilar" type="button">Use them</button><button class="ghost" id="dismissSimilar" type="button">Start fresh</button></div></div>
     <div class="bubble" aria-live="polite"></div>
     <div class="ask">
       <div class="field more"><span class="sign" aria-hidden="true">MORE</span><textarea id="more" aria-label="More of" maxlength="500" rows="1" placeholder="smaller, digital, cheaper…"></textarea></div>
@@ -168,7 +174,7 @@ fieldset{border:0;padding:0;margin:0}legend{font-size:12px;font-weight:650;color
       const prev = state;
       const next = typeof update === 'function' ? update(state) : update;
       try {
-        await storageSet(key, { ...next, savedAt: Date.now() });
+        await storageSet(key, { ...next, savedAt: Date.now(), queryText: query(), site: site.id });
         if (remember) undo = prev;
         state = next; render(); if (message) status(message); return true;
       } catch { status('Could not save. Reload the extension, then this tab.', 'err'); return false; }
@@ -179,19 +185,15 @@ fieldset{border:0;padding:0;margin:0}legend{font-size:12px;font-weight:650;color
 
   /* ---------- Card extraction & injected controls ---------- */
   function extract(card) {
-    const id = card.getAttribute('data-asin'), heading = card.querySelector('h2');
-    if (!id || !/^[\w-]{1,60}$/.test(id) || ['__proto__', 'constructor', 'prototype'].includes(id) || !heading) return null;
-    const copy = heading.cloneNode(true);
-    copy.querySelectorAll('[data-unshop-owned]').forEach(n => n.remove());
-    const title = (heading.getAttribute('aria-label') || copy.textContent).trim().replace(/\s+/g, ' ').slice(0, 500);
+    let p;
+    try { p = site.extract(card); } catch { return null; }
+    const id = String(p?.id || '');
+    if (!/^[\w-]{1,60}$/.test(id) || ['__proto__', 'constructor', 'prototype'].includes(id)) return null;
+    const title = String(p.title || '').replace(/\s+/g, ' ').trim().slice(0, 500);
     if (!title) return null;
-    const raw = card.querySelector('.a-price:not([data-a-strike]) .a-offscreen, .a-price .a-offscreen')?.textContent || '';
-    const price = /^\s*\$[\d,.]+\s*$/.test(raw) ? Number(raw.replace(/[$,\s]/g, '')) : null;
-    const src = card.querySelector('img.s-image')?.getAttribute('src') || '';
-    const image = /^(https:\/\/|data:image\/svg\+xml|chrome-extension:\/\/)/.test(src) ? src : '';
-    return { id, title, price: Number.isFinite(price) ? price : null, image };
+    return { id, title, price: Number.isFinite(p.price) && p.price > 0 ? p.price : null, image: p.image || '' };
   }
-  function observe() { observer.observe(document.body, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['data-asin'] }); }
+  function observe() { observer.observe(document.body, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: [site.idAttr] }); }
   function paused(fn) {
     observer?.disconnect();
     try { fn(); } finally { if (observer) observe(); }
@@ -227,7 +229,7 @@ fieldset{border:0;padding:0;margin:0}legend{font-size:12px;font-weight:650;color
     });
     maybeAutoScore();
   }
-  // Amazon attaches its own click/mousedown handlers to result cards. Intercept ours at the
+  // Stores attach their own click/mousedown handlers to result cards. Intercept ours at the
   // window capture phase (the very first listener to run) so the page can't swallow them.
   function intercept(event) {
     const ui = event.target instanceof Element ? event.target.closest('.unshop-ui[data-unshop-owned]') : null;
@@ -339,18 +341,16 @@ fieldset{border:0;padding:0;margin:0}legend{font-size:12px;font-weight:650;color
     if (thinking) { bubble.classList.remove('err'); bubble.classList.add('wait'); bubble.textContent = `${aiLabel} is reading your feedback and re-scoring this page…`; }
     else bubble.classList.remove('wait');
   }
-  function query() { return new URL(location.href).searchParams.get('k') || (demo ? 'wireless headphones' : ''); }
+  function query() { return S.query(site, location.href); }
   function updateSearch() {
     const q = M.refineQuery(query(), state) || 'headphones';
-    const url = new URL('https://www.amazon.com/s'); url.searchParams.set('k', q);
-    if (state.budget) url.searchParams.set('rh', `p_36:-${Math.round(state.budget * 100)}`);
-    const a = $('#search'); a.href = url.href;
+    const a = $('#search'); a.href = demo ? S.SITES[0].searchUrl(q, state.budget) : site.searchUrl(q, state.budget);
     a.replaceChildren(document.createTextNode(`Search “${q}”${state.budget ? ` under $${state.budget}` : ''}`));
-    const s = document.createElement('span'); s.textContent = 'Amazon ↗'; a.append(s);
+    const s = document.createElement('span'); s.textContent = `${demo ? 'Amazon' : site.label} ↗`; a.append(s);
   }
   // Following UnShop's own refined search carries these preferences to the new query.
   $('#search').addEventListener('click', () => {
-    if (!demo) storageSet('unshopHandoff', { from: key, to: M.searchKey($('#search').href), query: query(), at: Date.now() }).catch(() => {});
+    if (!demo) storageSet('unshopHandoff', { from: key, to: keyFor($('#search').href), query: query(), at: Date.now() }).catch(() => {});
   });
   const SUGGEST = [['more', 'Smaller'], ['more', 'Cheaper'], ['more', 'Simpler'], ['less', 'Bulky'], ['less', 'Flashy'], ['less', 'Plastic']];
   for (const [box, text] of SUGGEST) {
@@ -374,7 +374,7 @@ fieldset{border:0;padding:0;margin:0}legend{font-size:12px;font-weight:650;color
   async function runAi({ more = '', less = '', rejection = null } = {}) {
     if (ai !== 'online') return false;
     const seq = ++aiSeq; thinking = true; renderAi(); diagnostics.aiCalls++;
-    const payload = { query: query(), more, less, rejection, preferences: { budget: state.budget, compact: state.compact, priceTilt: state.priceTilt, mustHave: state.mustHave, avoid: state.avoid, notes: state.notes }, history: history(), products: visibleProducts() };
+    const payload = { query: query(), store: demo ? 'Demo' : site.label, more, less, rejection, preferences: { budget: state.budget, compact: state.compact, priceTilt: state.priceTilt, mustHave: state.mustHave, avoid: state.avoid, notes: state.notes }, history: history(), products: visibleProducts() };
     const response = await ask({ type: 'unshop:analyze', payload });
     if (seq !== aiSeq) return false;
     thinking = false;
@@ -438,7 +438,7 @@ fieldset{border:0;padding:0;margin:0}legend{font-size:12px;font-weight:650;color
     collapsed = value; panel.classList.toggle('hidden', value); launcher.classList.toggle('hidden', !value);
     if (save) saveUi();
   }
-  function saveUi() { storageSet('unshopUi', { collapsed, hidePoor }).catch(() => {}); }
+  function saveUi() { storageSet('unshopUi', { collapsed, hidePoor, dismissed }).catch(() => {}); }
   $('#hidePoor').addEventListener('change', e => { hidePoor = e.target.checked; saveUi(); render(); status(hidePoor ? 'Poor fits hidden. Turn this off to see everything.' : 'Showing every result again.'); });
   $('.collapse').onclick = () => { setCollapsed(true); launcher.focus(); };
   launcher.onclick = () => { setCollapsed(false); $('#more').focus(); };
@@ -460,14 +460,16 @@ fieldset{border:0;padding:0;margin:0}legend{font-size:12px;font-weight:650;color
   $('#undo').onclick = async () => { const prev = undo; if (prev && await commit(prev, 'Undone.', false)) { undo = null; render(); } };
   $('#reset').onclick = () => commit(M.emptyState(), 'Preferences reset. Undo is available.');
   $('#settings').onclick = () => { ask({ type: 'unshop:open-options' }); };
-  // Keep Amazon's keyboard shortcuts from stealing keys typed into the panel.
+  // Keep the store's keyboard shortcuts from stealing keys typed into the panel.
   for (const type of ['keydown', 'keyup', 'keypress']) host.addEventListener(type, e => e.stopPropagation());
 
   /* ---------- Startup ---------- */
   $('#learn').disabled = true; $('#reset').disabled = true;
   const scope = $('.scope');
-  scope.textContent = demo ? 'Fictional demo' : query() ? `Preferences for “${query()}”` : 'Preferences for this page';
   scope.title = 'Each search keeps its own preferences. A new search starts fresh.';
+  function setScope() {
+    scope.textContent = demo ? 'Fictional demo' : query() ? `Preferences for “${query()}” on ${site.label}` : `Preferences for this ${site.label} page`;
+  }
   async function carryOver() {
     const handoff = await storageGet('unshopHandoff');
     if (!handoff || handoff.to !== key || handoff.from === key || Date.now() - handoff.at > HANDOFF_MS) return null;
@@ -476,29 +478,91 @@ fieldset{border:0;padding:0;margin:0}legend{font-size:12px;font-weight:650;color
     if (!from) return null;
     const next = M.normalizeState(from);
     next.summary = `Carried over what you told me on “${String(handoff.query || '').slice(0, 60)}”.`;
-    await storageSet(key, { ...next, savedAt: Date.now() });
+    await storageSet(key, { ...next, savedAt: Date.now(), queryText: query(), site: site.id });
     return next;
   }
-  function pruneOldSearches() {
+  // Before multi-store support, Amazon searches were saved under the raw query; move them over once.
+  async function migrateLegacy() {
+    if (site.id !== 'amazon') return null;
+    const old = M.legacySearchKey(query());
+    const raw = old && old !== key ? await storageGet(old) : null;
+    if (!raw) return null;
+    await storageSet(key, { ...raw, savedAt: Date.now(), queryText: query(), site: site.id });
+    await new Promise(r => { try { chrome.storage.local.remove(old, r); } catch { r(); } });
+    return M.normalizeState(raw);
+  }
+  function allSaved() {
+    return new Promise(resolve => { try { chrome.storage.local.get(null, all => resolve(chrome.runtime.lastError ? {} : all || {})); } catch { resolve({}); } });
+  }
+  function pruneOldSearches(all) {
     try {
-      chrome.storage.local.get(null, all => {
-        if (chrome.runtime.lastError || !all) return;
-        const old = Object.entries(all).filter(([k]) => k.startsWith(M.SEARCH_PREFIX) && k !== key)
-          .sort((a, b) => (b[1]?.savedAt || 0) - (a[1]?.savedAt || 0)).slice(MAX_SEARCHES - 1).map(([k]) => k);
-        chrome.storage.local.remove([...old, 'unshopState']);  // 'unshopState' = pre-0.3 global preferences
-      });
+      const old = Object.entries(all).filter(([k]) => k.startsWith(M.SEARCH_PREFIX) && k !== key)
+        .sort((a, b) => (b[1]?.savedAt || 0) - (a[1]?.savedAt || 0)).slice(MAX_SEARCHES - 1).map(([k]) => k);
+      chrome.storage.local.remove([...old, 'unshopState']);  // 'unshopState' = pre-0.3 global preferences
     } catch { /* storage unavailable; nothing to prune */ }
   }
-  Promise.allSettled([storageGet(key), storageGet('unshopUi'), demo ? null : carryOver()]).then(([saved, ui, carried]) => {
-    if (saved.status === 'fulfilled' && saved.value) state = M.normalizeState(saved.value);
-    else if (carried.status === 'fulfilled' && carried.value) state = carried.value;
+  /* Similar searches: an exact match (same store, same canonical search) loads automatically.
+     A related search — same product noun, on any store — is only *offered*, because context differs
+     ("headphones for running" vs "headphones for the office"). Only stated preferences carry over. */
+  let similar = null, dismissed = [];
+  function showSimilar(match) {
+    similar = match;
+    const box = $('.suggest');
+    box.classList.toggle('hidden', !match);
+    if (!match) return;
+    const where = match.site && match.site !== site.id ? ` on ${(S.SITES.find(x => x.id === match.site) || {}).label || match.site}` : '';
+    const p = box.querySelector('p'); p.replaceChildren();
+    const b = document.createElement('b'); b.textContent = `“${match.queryText}”${where}`;
+    p.append('You told me what you like for ', b, '. Use those preferences here?');
+  }
+  $('#useSimilar').onclick = async () => {
+    const m = similar; if (!m) return;
+    showSimilar(null);
+    await commit(s => M.importPreferences(s, m.state, `Using what you told me for “${m.queryText}”. Edit or remove anything that doesn’t apply here.`), 'Preferences brought over.');
+    maybeAutoScore();
+  };
+  $('#dismissSimilar').onclick = () => {
+    dismissed = [...dismissed.filter(k => k !== key), key].slice(-50);
+    saveUi(); showSimilar(null);
+  };
+  // (Re)load everything for the current search. Runs at start and when a store changes search in place.
+  async function loadSearch() {
+    key = keyFor(location.href); activeHref = location.href;
+    state = M.emptyState(); undo = null; autoScored = false; showSimilar(null); setScope();
+    const [saved, ui] = await Promise.allSettled([storageGet(key), storageGet('unshopUi')]);
     if (saved.status === 'rejected') status('Storage unavailable. Reload the tab after updating the extension.', 'err');
-    if (!demo) pruneOldSearches();
-    if (ui.status === 'fulfilled' && ui.value?.collapsed) setCollapsed(true, false);
-    if (ui.status === 'fulfilled') hidePoor = ui.value?.hidePoor === true;
-  }).finally(() => {
+    if (ui.status === 'fulfilled' && ui.value) {
+      if (ui.value.collapsed) setCollapsed(true, false);
+      hidePoor = ui.value.hidePoor === true;
+      dismissed = Array.isArray(ui.value.dismissed) ? ui.value.dismissed.slice(-50) : [];
+    }
+    if (saved.status === 'fulfilled' && saved.value) state = M.normalizeState(saved.value);
+    else if (!demo) state = (await carryOver().catch(() => null)) || (await migrateLegacy().catch(() => null)) || state;
+    if (!demo) {
+      const all = await allSaved();
+      pruneOldSearches(all);
+      if (!M.hasPreferences(state) && !dismissed.includes(key)) showSimilar(M.findSimilar(query(), key, all));
+    }
+    render();
+  }
+  // Single-page stores (Walmart, Target) change the URL without reloading: follow along.
+  function setActive(active) { host.style.display = active ? '' : 'none'; }
+  setInterval(() => {
+    if (location.href === activeHref) return;
+    activeHref = location.href;
+    const isSearch = site.isSearch(new URL(location.href));
+    setActive(isSearch);
+    if (!isSearch) { paused(() => { for (const [card, entry] of cards) detach(card, entry); }); return; }
+    if (keyFor(location.href) !== key) loadSearch().then(() => { scan(); maybeAutoScore(); });
+    else scan();  // back on the same search (e.g. from a product page): re-attach controls
+  }, 800);
+
+  const startActive = site.isSearch(new URL(location.href));
+  setActive(startActive);
+  (startActive ? loadSearch() : Promise.resolve()).catch(() => {}).finally(() => {
     $('#learn').disabled = false;
     observer = new MutationObserver(records => {
+      if (!site.isSearch(new URL(location.href))) return;
       diagnostics.mutations += records.length;
       const relevant = records.some(record => {
         const target = record.target.nodeType === 1 ? record.target : record.target.parentElement;
@@ -508,7 +572,7 @@ fieldset{border:0;padding:0;margin:0}legend{font-size:12px;font-weight:650;color
       });
       if (relevant && !timer) timer = setTimeout(scan, 120);
     });
-    scan();
+    if (startActive) scan(); else observe();
     ask({ type: 'unshop:health' }).then(h => {
       ai = h?.ok ? 'online' : h?.disabled ? 'off' : 'offline';
       if (h?.ok && h.label) aiLabel = String(h.label).slice(0, 24);
